@@ -121,6 +121,12 @@ export function ContactForm({
     }
   };
 
+  // Ermittle ob Kapitalgesellschaft
+  const isCapitalCompany = ["gmbh", "ug", "ltd", "ag", "gmbh_co_kg"].includes(normalizationResult.legalForm);
+  
+  // Label für Unternehmerlohn/GF-Gehalt
+  const salaryLabel = isCapitalCompany ? "Angemessenes GF-Gehalt" : "Angemessener Unternehmerlohn";
+
   const generateValuationSummary = (): string => {
     return `
 UNTERNEHMENSBEWERTUNG - ERGEBNIS
@@ -134,12 +140,14 @@ KONTAKTDATEN:
 
 BEWERTUNGSGRUNDLAGE:
 - Branche: ${selectedSector}
+- Rechtsform: ${normalizationResult.legalFormLabel}
 - Durchschnittlicher Umsatz (3 Jahre): ${formatCurrency(normalizationResult.averageRevenue)}
+- ${salaryLabel} (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}
 - Bereinigtes EBIT (Durchschnitt): ${formatCurrency(normalizationResult.averageNormalizedEbit)}
 - Bereinigte EBIT-Marge: ${formatNumber(valuationResult.ebitMargin)}%
 
 EBIT-BEREINIGUNG PRO JAHR:
-${normalizationResult.years.map(y => `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`).join('\n')}
+${normalizationResult.years.map(y => `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, ${salaryLabel} ${formatCurrency(y.marketSalary)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`).join('\n')}
 
 BEWERTUNGSERGEBNIS:
 - Basismultiple: ${formatNumber(valuationResult.baseMultiple)}x
@@ -196,10 +204,12 @@ www.ratjenkollegen.de
           email_kunde: contactData.email,
           telefon: contactData.phone,
           branche: selectedSector,
+          rechtsform: normalizationResult.legalFormLabel,
           unternehmenswert_min: formatCurrency(valuationResult.enterpriseValue.low),
           unternehmenswert_mitte: formatCurrency(valuationResult.enterpriseValue.mid),
           unternehmenswert_max: formatCurrency(valuationResult.enterpriseValue.high),
           bereinigtes_ebit: formatCurrency(normalizationResult.averageNormalizedEbit),
+          unternehmerlohn_gf_gehalt: formatCurrency(normalizationResult.averageMarketSalary),
           multiple: formatNumber(valuationResult.adjustedMultiple),
         }),
       });
