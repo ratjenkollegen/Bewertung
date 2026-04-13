@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +80,19 @@ export function ContactForm({
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  // Ref für das erste Eingabefeld (Vorname)
+  const firstNameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Fokus auf Vorname-Feld setzen, wenn Formular angezeigt wird
+  useEffect(() => {
+    // Kurze Verzögerung, damit der Tab-Wechsel abgeschlossen ist
+    const timer = setTimeout(() => {
+      firstNameInputRef.current?.focus();
+      firstNameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const validateForm = (): boolean => {
     if (!contactData.firstName.trim()) {
@@ -339,7 +352,7 @@ kann aufgrund individueller Faktoren erheblich abweichen.
 
 Für rechtsverbindliche Entscheidungen, steuerliche Fragen oder Finanzierungsvorhaben 
 ziehen Sie bitte die entsprechenden Fachberater (Rechtsanwalt, Steuerberater, 
-Wirtschaftsprüfer) hinzu.
+Wirtschaftspr��fer) hinzu.
 
 ================================================================================
     `.trim();
@@ -532,6 +545,7 @@ Diese E-Mail wurde automatisch generiert.
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={firstNameInputRef}
                   id="firstName"
                   type="text"
                   placeholder="Max"
