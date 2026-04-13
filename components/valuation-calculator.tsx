@@ -39,8 +39,10 @@ export function ValuationCalculator() {
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [normalizationResult, setNormalizationResult] = useState<NormalizationResult | null>(null);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [autoFocusLegalForm, setAutoFocusLegalForm] = useState(false);
   
   const sectorSelectRef = useRef<HTMLButtonElement>(null);
+  const firstFactorRef = useRef<HTMLButtonElement>(null);
   
   // Ref um immer die aktuelle setActiveTab-Funktion zu haben
   const setActiveTabRef = useRef(setActiveTab);
@@ -107,13 +109,22 @@ export function ValuationCalculator() {
     setNormalizationResult(result);
     setContactSubmitted(false); // Reset bei neuer EBIT-Bereinigung
     setResult(null);
+    setAutoFocusLegalForm(false); // Reset
     setActiveTab("adjustments");
+    
+    // Fokus auf ersten Faktor nach Tab-Wechsel
+    setTimeout(() => {
+      firstFactorRef.current?.focus();
+      firstFactorRef.current?.click();
+      firstFactorRef.current?.classList.add("input-highlight");
+    }, 150);
   };
 
   const handleSectorSelect = (sectorId: string) => {
     setSelectedSector(sectorId);
     setContactSubmitted(false); // Reset bei neuer Branchenauswahl
     setResult(null);
+    setAutoFocusLegalForm(true); // Trigger Auto-Focus auf Rechtsform
     setActiveTab("normalization");
   };
 
@@ -288,7 +299,10 @@ export function ValuationCalculator() {
 
           {/* EBIT-BEREINIGUNG TAB */}
           <TabsContent value="normalization" className="space-y-6">
-            <EbitNormalization onNormalizationComplete={handleNormalizationComplete} />
+            <EbitNormalization 
+              onNormalizationComplete={handleNormalizationComplete}
+              autoFocusLegalForm={autoFocusLegalForm}
+            />
           </TabsContent>
 
           {/* ANPASSUNGSFAKTOREN TAB */}
@@ -305,13 +319,18 @@ export function ValuationCalculator() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-8">
-                  {Object.entries(groupedFactors).map(([category, factors]) => (
+                  {(() => {
+                    let globalIndex = 0;
+                    return Object.entries(groupedFactors).map(([category, factors]) => (
                     <div key={category} className="space-y-4">
                       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                         {category}
                       </h3>
                       <div className="grid gap-4 lg:grid-cols-2">
-                        {factors.map((factor) => (
+                        {factors.map((factor) => {
+                          const isFirst = globalIndex === 0;
+                          globalIndex++;
+                          return (
                           <div
                             key={factor.id}
                             className="rounded-lg border p-4 space-y-3"
@@ -334,11 +353,20 @@ export function ValuationCalculator() {
                                 adjustments[factor.id]?.toString() ||
                                 factor.options[1]?.value.toString()
                               }
-                              onValueChange={(value) =>
-                                handleAdjustmentChange(factor.id, parseFloat(value))
-                              }
+                              onValueChange={(value) => {
+                                handleAdjustmentChange(factor.id, parseFloat(value));
+                                // Entferne Highlight nach Auswahl
+                                if (isFirst) {
+                                  firstFactorRef.current?.classList.remove("input-highlight");
+                                }
+                              }}
                             >
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger 
+                                ref={isFirst ? firstFactorRef : undefined}
+                                className="w-full"
+                                onFocus={(e) => e.currentTarget.classList.add("input-highlight")}
+                                onBlur={(e) => e.currentTarget.classList.remove("input-highlight")}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -379,10 +407,11 @@ export function ValuationCalculator() {
                               </p>
                             )}
                           </div>
-                        ))}
+                        )})}
                       </div>
                     </div>
-                  ))}
+                  ));
+                  })()}
                 </div>
 
                 <div className="mt-8 pt-6 border-t">
