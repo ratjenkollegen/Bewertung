@@ -99,14 +99,21 @@ export interface AdjustmentItem {
 export interface NormalizationResult {
   years: {
     year: number;
+    revenue: number;
     reportedEbit: number;
     totalAdditions: number;
     totalDeductions: number;
     salaryAdjustment: number;
     normalizedEbit: number;
+    currentSalary: number;
+    marketSalary: number;
   }[];
   averageNormalizedEbit: number;
   averageRevenue: number;
+  legalForm: string;
+  legalFormLabel: string;
+  averageMarketSalary: number;
+  averageCurrentSalary: number;
 }
 
 // Vordefinierte Kategorien für Hinzurechnungen
@@ -280,6 +287,9 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
   const yearResults = useMemo(() => {
     return years.map((yearData) => ({
       year: yearData.year,
+      revenue: parseGermanNumber(yearData.revenue),
+      currentSalary: parseGermanNumber(yearData.currentSalary),
+      marketSalary: parseGermanNumber(yearData.marketSalary),
       ...calculateNormalizedEbit(yearData),
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -299,11 +309,48 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
     return revenueValues.reduce((sum, v) => sum + v, 0) / revenueValues.length;
   }, [years]);
 
+  // Rechtsform-Label für die Anzeige
+  const getLegalFormLabel = (form: LegalForm): string => {
+    const labels: Record<LegalForm, string> = {
+      "": "",
+      "einzelunternehmen": "Einzelunternehmen",
+      "personengesellschaft": "Personengesellschaft (OHG, KG, GbR)",
+      "gmbh": "GmbH",
+      "ug": "UG (haftungsbeschränkt)",
+      "gmbh_co_kg": "GmbH & Co. KG",
+      "ag": "AG",
+      "ltd": "Ltd.",
+    };
+    return labels[form] || form;
+  };
+
+  // Durchschnittlicher marktüblicher Lohn/Gehalt
+  const averageMarketSalary = useMemo(() => {
+    const salaryValues = years
+      .map((y) => parseGermanNumber(y.marketSalary))
+      .filter((v) => v > 0);
+    if (salaryValues.length === 0) return 0;
+    return salaryValues.reduce((sum, v) => sum + v, 0) / salaryValues.length;
+  }, [years]);
+
+  // Durchschnittliches tatsächliches GF-Gehalt (nur für Kapitalgesellschaften relevant)
+  const averageCurrentSalary = useMemo(() => {
+    const salaryValues = years
+      .map((y) => parseGermanNumber(y.currentSalary))
+      .filter((v) => v > 0);
+    if (salaryValues.length === 0) return 0;
+    return salaryValues.reduce((sum, v) => sum + v, 0) / salaryValues.length;
+  }, [years]);
+
   const handleComplete = () => {
     onNormalizationComplete({
       years: yearResults,
       averageNormalizedEbit,
       averageRevenue,
+      legalForm,
+      legalFormLabel: getLegalFormLabel(legalForm),
+      averageMarketSalary,
+      averageCurrentSalary,
     });
   };
 
