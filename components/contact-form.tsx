@@ -185,6 +185,8 @@ www.ratjenkollegen.de
     try {
       const valuationSummary = generateValuationSummary();
 
+      console.log("[v0] Sende E-Mail an Web3Forms...");
+      
       // Sende an Web3Forms (an Ratjen & Kollegen)
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
@@ -250,14 +252,19 @@ Diese E-Mail wurde automatisch generiert.
       });
 
       const data = await response.json();
+      console.log("[v0] Web3Forms Antwort:", JSON.stringify(data, null, 2));
+      console.log("[v0] Response Status:", response.status);
 
       if (data.success) {
+        console.log("[v0] SUCCESS - E-Mail sollte gesendet worden sein");
         setIsSubmitted(true);
         // onSuccess wird nicht mehr aufgerufen - Ergebnis nur per E-Mail
       } else {
+        console.log("[v0] FEHLER - Web3Forms hat Fehler zurückgegeben:", data);
         setError("Beim Senden ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.");
       }
-    } catch {
+    } catch (err) {
+      console.log("[v0] CATCH FEHLER:", err);
       setError("Beim Senden ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.");
     } finally {
       setIsSubmitting(false);
