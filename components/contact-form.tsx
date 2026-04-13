@@ -288,10 +288,10 @@ ergibt sich folgender Unternehmenswert:
     ║                                                                      ║
     ║   ────────────────────────────────────────────────────────────────   ║
     ║                                                                      ║
-    ║   UNTERNEHMENSWERT:                                                  ║
+    ║   **BERECHNETER UNTERNEHMENSWERT:**                                  ║
     ║                                                                      ║
     ║       Bandbreite:    ${formatCurrency(valuationResult.enterpriseValue.low)} - ${formatCurrency(valuationResult.enterpriseValue.high)}              ║
-    ║       Mittelwert:    ${formatCurrency(valuationResult.enterpriseValue.mid)}                                ║
+    ║       **Mittelwert:  ${formatCurrency(valuationResult.enterpriseValue.mid)}**                              ║
     ║                                                                      ║
     ╚══════════════════════════════════════════════════════════════════════╝
 
