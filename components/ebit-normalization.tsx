@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,10 +148,27 @@ const deductionCategories = [
 interface EbitNormalizationProps {
   onNormalizationComplete: (result: NormalizationResult) => void;
   initialYears?: YearData[];
+  autoFocusLegalForm?: boolean;
 }
 
-export function EbitNormalization({ onNormalizationComplete }: EbitNormalizationProps) {
+export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm }: EbitNormalizationProps) {
   const currentYear = new Date().getFullYear();
+  
+  // Refs für Eingabefelder
+  const legalFormRef = useRef<HTMLButtonElement>(null);
+  const revenueRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
+  
+  // Auto-Focus auf Rechtsform wenn Tab aktiviert wird
+  useEffect(() => {
+    if (autoFocusLegalForm) {
+      const timer = setTimeout(() => {
+        legalFormRef.current?.focus();
+        legalFormRef.current?.click();
+        legalFormRef.current?.classList.add("input-highlight");
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocusLegalForm]);
   
   const createEmptyYear = (year: number): YearData => ({
     year,
@@ -165,6 +182,22 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
 
   // Globale Rechtsform (gilt für alle Jahre) - initial leer für Placeholder
   const [legalForm, setLegalForm] = useState<LegalForm>("");
+  
+  // Handler für Rechtsform-Änderung mit Auto-Focus auf erstes Umsatzfeld
+  const handleLegalFormChange = (value: LegalForm) => {
+    setLegalForm(value);
+    legalFormRef.current?.classList.remove("input-highlight");
+    
+    // Fokus auf erstes Umsatzfeld nach kurzer Verzögerung
+    setTimeout(() => {
+      const firstRevenueInput = revenueRefs.current[0];
+      if (firstRevenueInput) {
+        firstRevenueInput.focus();
+        firstRevenueInput.classList.add("input-highlight");
+        firstRevenueInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  };
 
   const [years, setYears] = useState<YearData[]>([
     createEmptyYear(currentYear - 3),
@@ -429,9 +462,9 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
                       : "Angemessener Unternehmerlohn wird abgezogen"}
                 </p>
               </div>
-              <Select value={legalForm} onValueChange={(v: LegalForm) => setLegalForm(v)}>
-                <SelectTrigger className={`w-[280px] ${!legalForm ? "border-amber-400" : ""}`}>
-                  <SelectValue placeholder="Geben Sie die Rechtsform ein" />
+<Select value={legalForm} onValueChange={(v: LegalForm) => handleLegalFormChange(v)}>
+  <SelectTrigger ref={legalFormRef} className={`w-[280px] ${!legalForm ? "border-amber-400" : ""}`}>
+  <SelectValue placeholder="Geben Sie die Rechtsform ein" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="einzelunternehmen">Einzelunternehmen</SelectItem>
@@ -489,11 +522,14 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
                   <div className="space-y-1">
                     <Label className="text-xs">Umsatz <span className="text-red-500">*</span></Label>
                     <Input
+                      ref={(el) => { revenueRefs.current[yearIndex] = el; }}
                       type="text"
                       placeholder="z.B. 2.500.000"
                       value={yearData.revenue}
                       className={!yearData.revenue ? "border-amber-400" : ""}
                       onChange={(e) => updateYear(yearIndex, { revenue: formatInputNumber(e.target.value) })}
+                      onFocus={(e) => e.target.classList.add("input-highlight")}
+                      onBlur={(e) => e.target.classList.remove("input-highlight")}
                     />
                     {!yearData.revenue && (
                       <p className="text-xs text-amber-600">Pflichtfeld</p>
