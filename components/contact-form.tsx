@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +80,19 @@ export function ContactForm({
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  // Ref für das erste Eingabefeld (Vorname)
+  const firstNameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Fokus auf Vorname-Feld setzen, wenn Formular angezeigt wird
+  useEffect(() => {
+    // Kurze Verzögerung, damit der Tab-Wechsel abgeschlossen ist
+    const timer = setTimeout(() => {
+      firstNameInputRef.current?.focus();
+      firstNameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const validateForm = (): boolean => {
     if (!contactData.firstName.trim()) {
@@ -121,45 +134,223 @@ export function ContactForm({
     }
   };
 
+  // Ermittle ob Kapitalgesellschaft
+  const isCapitalCompany = ["gmbh", "ug", "ltd", "ag", "gmbh_co_kg"].includes(normalizationResult.legalForm);
+  
+  // Labels für Unternehmerlohn/GF-Gehalt
+  const marketSalaryLabel = isCapitalCompany ? "Angemessenes GF-Gehalt" : "Angemessener Unternehmerlohn";
+  const currentSalaryLabel = "Tatsächliches GF-Gehalt";
+
   const generateValuationSummary = (): string => {
+    // Gehaltsinformationen pro Jahr für die Tabelle
+    const yearTableRows = normalizationResult.years.map(y => {
+      if (isCapitalCompany) {
+        return `    ${y.year}:
+      - Umsatz: ${formatCurrency(y.revenue)}
+      - ${currentSalaryLabel}: ${formatCurrency(y.currentSalary)}
+      - ${marketSalaryLabel}: ${formatCurrency(y.marketSalary)}
+      - Bereinigter Betriebsgewinn: ${formatCurrency(y.normalizedEbit)}`;
+      } else {
+        return `    ${y.year}:
+      - Umsatz: ${formatCurrency(y.revenue)}
+      - ${marketSalaryLabel}: ${formatCurrency(y.marketSalary)}
+      - Bereinigter Betriebsgewinn: ${formatCurrency(y.normalizedEbit)}`;
+      }
+    }).join('\n\n');
+
+    // Gehaltserklärung je nach Rechtsform
+    const salaryExplanation = isCapitalCompany
+      ? `Bei Kapitalgesellschaften wie Ihrer ${normalizationResult.legalFormLabel} wird geprüft, ob das 
+tatsächlich gezahlte Geschäftsführergehalt dem entspricht, was ein angestellter 
+Geschäftsführer am Markt verdienen würde.
+
+    - Ihr tatsächliches GF-Gehalt (Durchschnitt): ${formatCurrency(normalizationResult.averageCurrentSalary)}
+    - Angemessenes GF-Gehalt am Markt (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}
+    
+Die Differenz wird bei der Berechnung berücksichtigt, um den tatsächlichen 
+wirtschaftlichen Ertrag Ihres Unternehmens zu ermitteln.`
+      : `Bei Einzelunternehmen und Personengesellschaften arbeitet der Inhaber oft im 
+Unternehmen mit, erhält aber kein Gehalt im klassischen Sinne - der Gewinn ist 
+sein "Lohn". Um den Unternehmenswert fair zu berechnen, ziehen wir einen 
+angemessenen Unternehmerlohn ab. Das ist der Betrag, den Sie einem angestellten 
+Geschäftsführer zahlen müssten, der Ihre Arbeit übernimmt.
+
+    - Angemessener Unternehmerlohn (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}`;
+
     return `
-UNTERNEHMENSBEWERTUNG - ERGEBNIS
-================================
+================================================================================
+                    INDIKATIVE UNTERNEHMENSWERTERMITTLUNG
+                         für ${contactData.companyName}
+================================================================================
 
-KONTAKTDATEN:
-- Name: ${contactData.firstName} ${contactData.lastName}
-- Unternehmen: ${contactData.companyName}
-- E-Mail: ${contactData.email}
-- Telefon: ${contactData.phone}
+Sehr geehrte(r) ${contactData.firstName} ${contactData.lastName},
 
-BEWERTUNGSGRUNDLAGE:
-- Branche: ${selectedSector}
-- Durchschnittlicher Umsatz (3 Jahre): ${formatCurrency(normalizationResult.averageRevenue)}
-- Bereinigtes EBIT (Durchschnitt): ${formatCurrency(normalizationResult.averageNormalizedEbit)}
-- Bereinigte EBIT-Marge: ${formatNumber(valuationResult.ebitMargin)}%
+vielen Dank für die Nutzung unseres Bewertungstools. Im Folgenden erhalten Sie 
+eine ausführliche Erläuterung Ihrer Unternehmensbewertung.
 
-EBIT-BEREINIGUNG PRO JAHR:
-${normalizationResult.years.map(y => `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`).join('\n')}
 
-BEWERTUNGSERGEBNIS:
-- Basismultiple: ${formatNumber(valuationResult.baseMultiple)}x
-- Angepasstes Multiple: ${formatNumber(valuationResult.adjustedMultiple)}x
-- Multiple-Veränderung: ${formatNumber(((valuationResult.adjustedMultiple - valuationResult.baseMultiple) / valuationResult.baseMultiple) * 100)}%
+--------------------------------------------------------------------------------
+1. IHRE UNTERNEHMENSDATEN
+--------------------------------------------------------------------------------
 
-UNTERNEHMENSWERT (Enterprise Value):
-- Untergrenze: ${formatCurrency(valuationResult.enterpriseValue.low)}
-- Mittelwert: ${formatCurrency(valuationResult.enterpriseValue.mid)}
-- Obergrenze: ${formatCurrency(valuationResult.enterpriseValue.high)}
+    Unternehmen:     ${contactData.companyName}
+    Rechtsform:      ${normalizationResult.legalFormLabel}
+    Branche:         ${selectedSector}
+    Kontakt:         ${contactData.email} | ${contactData.phone}
 
-ANPASSUNGSFAKTOREN:
-${valuationResult.adjustmentDetails.map(a => `- ${a.factorName}: ${a.impact >= 0 ? '+' : ''}${formatNumber(a.impact * 100)}%`).join('\n')}
 
-================================
-Diese Bewertung dient nur zu Informationszwecken und stellt keine Finanz- oder Rechtsberatung dar.
-Für eine verbindliche Bewertung ziehen Sie bitte professionelle Berater hinzu.
+--------------------------------------------------------------------------------
+2. WAS BEDEUTET "BETRIEBSGEWINN" (EBIT)?
+--------------------------------------------------------------------------------
 
-Ratjen & Kollegen
-www.ratjenkollegen.de
+Der Betriebsgewinn - in der Fachsprache "EBIT" genannt (Earnings Before Interest 
+and Taxes = Gewinn vor Zinsen und Steuern) - zeigt, wie viel Geld Ihr Unternehmen 
+durch das normale Geschäft erwirtschaftet, bevor Zinsen für Kredite und Steuern 
+abgezogen werden.
+
+Warum ist das wichtig? Der Betriebsgewinn zeigt die echte Ertragskraft Ihres 
+Unternehmens - unabhängig davon, wie es finanziert ist oder welche Steuern 
+anfallen. Das macht Unternehmen vergleichbar.
+
+
+--------------------------------------------------------------------------------
+3. WARUM BEREINIGEN WIR DEN BETRIEBSGEWINN?
+--------------------------------------------------------------------------------
+
+In vielen kleinen und mittleren Unternehmen gibt es Besonderheiten, die den 
+ausgewiesenen Gewinn verzerren können:
+
+${salaryExplanation}
+
+Zusätzlich können einmalige oder außergewöhnliche Posten (z.B. Verkauf einer 
+Maschine, einmalige Rechtskosten) den Gewinn verzerren. Diese werden ebenfalls 
+bereinigt, um ein realistisches Bild der dauerhaften Ertragskraft zu erhalten.
+
+
+--------------------------------------------------------------------------------
+4. IHRE ZAHLEN IM DETAIL (letzte 3 Jahre)
+--------------------------------------------------------------------------------
+
+${yearTableRows}
+
+    ──────────────────────────────────────────────────────
+    DURCHSCHNITTSWERTE:
+    - Durchschnittlicher Umsatz:          ${formatCurrency(normalizationResult.averageRevenue)}
+    - Durchschnittlicher Betriebsgewinn:  ${formatCurrency(normalizationResult.averageNormalizedEbit)}
+    - Betriebsgewinn-Marge:               ${formatNumber(valuationResult.ebitMargin)}%
+    ──────────────────────────────────────────────────────
+
+Die Betriebsgewinn-Marge zeigt, wie viel Prozent vom Umsatz als Betriebsgewinn 
+übrig bleiben. Eine Marge von ${formatNumber(valuationResult.ebitMargin)}% bedeutet: Von jedem Euro Umsatz 
+bleiben ${formatNumber(valuationResult.ebitMargin)} Cent als Betriebsgewinn.
+
+
+--------------------------------------------------------------------------------
+5. WAS IST EIN "MULTIPLE" UND WOHER KOMMT ES?
+--------------------------------------------------------------------------------
+
+Ein Multiple (deutsch: Vervielfältiger) ist eine Kennzahl, mit der der 
+Unternehmenswert berechnet wird:
+
+    Unternehmenswert = Bereinigter Betriebsgewinn × Multiple
+
+Woher kommen diese Multiples?
+Die Multiples basieren auf TATSÄCHLICHEN UNTERNEHMENSVERKÄUFEN von kleinen und 
+mittleren Unternehmen (KMU) in Deutschland. Experten werten regelmäßig aus, 
+zu welchen Preisen Unternehmen verschiedener Branchen verkauft werden, und 
+errechnen daraus branchenspezifische Durchschnittswerte.
+
+Für Ihre Branche "${selectedSector}" liegt das durchschnittliche Multiple bei:
+
+    Branchen-Multiple: ${formatNumber(valuationResult.baseMultiple)}x
+
+Das bedeutet: Unternehmen Ihrer Branche werden im Durchschnitt zum 
+${formatNumber(valuationResult.baseMultiple)}-fachen ihres bereinigten Betriebsgewinns verkauft.
+
+
+--------------------------------------------------------------------------------
+6. ANPASSUNG DES MULTIPLES AN IHR UNTERNEHMEN
+--------------------------------------------------------------------------------
+
+Jedes Unternehmen ist einzigartig. Deshalb passen wir das Branchen-Multiple 
+anhand verschiedener Faktoren an Ihre spezifische Situation an:
+
+${valuationResult.adjustmentDetails.map(a => {
+  const impactPercent = a.impact * 100;
+  const impactText = impactPercent >= 0 ? `+${formatNumber(impactPercent)}%` : `${formatNumber(impactPercent)}%`;
+  return `    - ${a.factorName}: ${impactText}`;
+}).join('\n')}
+
+    ──────────────────────────────────────────────────────
+    Branchen-Multiple:              ${formatNumber(valuationResult.baseMultiple)}x
+    Nach Anpassungen:               ${formatNumber(valuationResult.adjustedMultiple)}x
+    ──────────────────────────────────────────────────────
+
+
+--------------------------------------------------------------------------------
+7. IHR UNTERNEHMENSWERT
+--------------------------------------------------------------------------------
+
+Basierend auf Ihrem bereinigten Betriebsgewinn und dem angepassten Multiple 
+ergibt sich folgender Unternehmenswert:
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                                                                      ║
+    ║   Bereinigter Betriebsgewinn:     ${formatCurrency(normalizationResult.averageNormalizedEbit).padEnd(15)}                   ║
+    ║   × Angepasstes Multiple:         ${formatNumber(valuationResult.adjustedMultiple)}x                                 ║
+    ║                                                                      ║
+    ║   ────────────────────────────────────────────────────────────────   ║
+    ║                                                                      ║
+    ║   **BERECHNETER UNTERNEHMENSWERT:**                                  ║
+    ║                                                                      ║
+    ║       Bandbreite:    ${formatCurrency(valuationResult.enterpriseValue.low)} - ${formatCurrency(valuationResult.enterpriseValue.high)}              ║
+    ║       **Mittelwert:  ${formatCurrency(valuationResult.enterpriseValue.mid)}**                              ║
+    ║                                                                      ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+Die Bandbreite berücksichtigt, dass der tatsächliche Verkaufspreis von vielen 
+Faktoren abhängt, die erst in konkreten Verhandlungen eine Rolle spielen.
+
+WICHTIG: Dies ist der sogenannte "Enterprise Value" (Gesamtunternehmenswert). 
+Bei einem Verkauf werden davon noch Bankschulden abgezogen und vorhandene 
+Barmittel/Liquidität hinzugerechnet, um den Kaufpreis für die Anteile zu 
+ermitteln.
+
+
+--------------------------------------------------------------------------------
+8. WIE GEHT ES WEITER?
+--------------------------------------------------------------------------------
+
+Diese Bewertung gibt Ihnen eine erste Orientierung über den möglichen Wert 
+Ihres Unternehmens. Für eine verbindliche Bewertung - etwa im Rahmen eines 
+geplanten Verkaufs, einer Nachfolgeregelung oder einer Finanzierung - empfehlen 
+wir ein persönliches Gespräch.
+
+Wir von Ratjen & Kollegen unterstützen Sie gerne bei:
+    - Detaillierten Unternehmensbewertungen
+    - Nachfolgeplanung und -umsetzung
+    - Unternehmensverkäufen (M&A)
+    - Strategischer Beratung
+
+Kontaktieren Sie uns für ein unverbindliches Erstgespräch:
+
+    Ratjen & Kollegen Management GmbH
+    E-Mail:  info@ratjenkollegen.de
+    Web:     www.ratjenkollegen.de
+
+
+================================================================================
+                              WICHTIGER HINWEIS
+================================================================================
+
+Diese indikative Wertermittlung dient ausschließlich zu Ihrer ersten Orientierung 
+und stellt KEINE Rechtsberatung, Steuerberatung oder Finanzberatung dar.
+
+Die ermittelten Werte basieren auf den von Ihnen eingegebenen Daten und 
+statistischen Durchschnittswerten. Der tatsächliche Marktwert Ihres Unternehmens 
+kann aufgrund individueller Faktoren erheblich abweichen.
+
+================================================================================
     `.trim();
   };
 
@@ -176,7 +367,7 @@ www.ratjenkollegen.de
 
     try {
       const valuationSummary = generateValuationSummary();
-
+      
       // Sende an Web3Forms (an Ratjen & Kollegen)
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
@@ -196,10 +387,13 @@ www.ratjenkollegen.de
           email_kunde: contactData.email,
           telefon: contactData.phone,
           branche: selectedSector,
+          rechtsform: normalizationResult.legalFormLabel,
           unternehmenswert_min: formatCurrency(valuationResult.enterpriseValue.low),
           unternehmenswert_mitte: formatCurrency(valuationResult.enterpriseValue.mid),
           unternehmenswert_max: formatCurrency(valuationResult.enterpriseValue.high),
           bereinigtes_ebit: formatCurrency(normalizationResult.averageNormalizedEbit),
+          angemessenes_gehalt: formatCurrency(normalizationResult.averageMarketSalary),
+          tatsaechliches_gf_gehalt: isCapitalCompany ? formatCurrency(normalizationResult.averageCurrentSalary) : "n/a",
           multiple: formatNumber(valuationResult.adjustedMultiple),
         }),
       });
@@ -347,6 +541,7 @@ Diese E-Mail wurde automatisch generiert.
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={firstNameInputRef}
                   id="firstName"
                   type="text"
                   placeholder="Max"
