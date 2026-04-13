@@ -124,10 +124,26 @@ export function ContactForm({
   // Ermittle ob Kapitalgesellschaft
   const isCapitalCompany = ["gmbh", "ug", "ltd", "ag", "gmbh_co_kg"].includes(normalizationResult.legalForm);
   
-  // Label für Unternehmerlohn/GF-Gehalt
-  const salaryLabel = isCapitalCompany ? "Angemessenes GF-Gehalt" : "Angemessener Unternehmerlohn";
+  // Labels für Unternehmerlohn/GF-Gehalt
+  const marketSalaryLabel = isCapitalCompany ? "Angemessenes GF-Gehalt" : "Angemessener Unternehmerlohn";
+  const currentSalaryLabel = "Tatsächliches GF-Gehalt";
 
   const generateValuationSummary = (): string => {
+    // Gehaltsinformationen für Durchschnittswerte
+    const salaryInfoAverage = isCapitalCompany 
+      ? `- ${currentSalaryLabel} (Durchschnitt): ${formatCurrency(normalizationResult.averageCurrentSalary)}
+- ${marketSalaryLabel} (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}`
+      : `- ${marketSalaryLabel} (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}`;
+
+    // Gehaltsinformationen pro Jahr
+    const yearDetails = normalizationResult.years.map(y => {
+      if (isCapitalCompany) {
+        return `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, ${currentSalaryLabel} ${formatCurrency(y.currentSalary)}, ${marketSalaryLabel} ${formatCurrency(y.marketSalary)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`;
+      } else {
+        return `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, ${marketSalaryLabel} ${formatCurrency(y.marketSalary)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`;
+      }
+    }).join('\n');
+
     return `
 UNTERNEHMENSBEWERTUNG - ERGEBNIS
 ================================
@@ -142,12 +158,12 @@ BEWERTUNGSGRUNDLAGE:
 - Branche: ${selectedSector}
 - Rechtsform: ${normalizationResult.legalFormLabel}
 - Durchschnittlicher Umsatz (3 Jahre): ${formatCurrency(normalizationResult.averageRevenue)}
-- ${salaryLabel} (Durchschnitt): ${formatCurrency(normalizationResult.averageMarketSalary)}
+${salaryInfoAverage}
 - Bereinigtes EBIT (Durchschnitt): ${formatCurrency(normalizationResult.averageNormalizedEbit)}
 - Bereinigte EBIT-Marge: ${formatNumber(valuationResult.ebitMargin)}%
 
 EBIT-BEREINIGUNG PRO JAHR:
-${normalizationResult.years.map(y => `- ${y.year}: Umsatz ${formatCurrency(y.revenue)}, ${salaryLabel} ${formatCurrency(y.marketSalary)}, Bereinigtes EBIT ${formatCurrency(y.normalizedEbit)}`).join('\n')}
+${yearDetails}
 
 BEWERTUNGSERGEBNIS:
 - Basismultiple: ${formatNumber(valuationResult.baseMultiple)}x
@@ -184,8 +200,6 @@ www.ratjenkollegen.de
 
     try {
       const valuationSummary = generateValuationSummary();
-
-      console.log("[v0] Sende E-Mail an Web3Forms...");
       
       // Sende an Web3Forms (an Ratjen & Kollegen)
       const response = await fetch("https://api.web3forms.com/submit", {
@@ -211,7 +225,8 @@ www.ratjenkollegen.de
           unternehmenswert_mitte: formatCurrency(valuationResult.enterpriseValue.mid),
           unternehmenswert_max: formatCurrency(valuationResult.enterpriseValue.high),
           bereinigtes_ebit: formatCurrency(normalizationResult.averageNormalizedEbit),
-          unternehmerlohn_gf_gehalt: formatCurrency(normalizationResult.averageMarketSalary),
+          angemessenes_gehalt: formatCurrency(normalizationResult.averageMarketSalary),
+          tatsaechliches_gf_gehalt: isCapitalCompany ? formatCurrency(normalizationResult.averageCurrentSalary) : "n/a",
           multiple: formatNumber(valuationResult.adjustedMultiple),
         }),
       });
@@ -252,19 +267,14 @@ Diese E-Mail wurde automatisch generiert.
       });
 
       const data = await response.json();
-      console.log("[v0] Web3Forms Antwort:", JSON.stringify(data, null, 2));
-      console.log("[v0] Response Status:", response.status);
 
       if (data.success) {
-        console.log("[v0] SUCCESS - E-Mail sollte gesendet worden sein");
         setIsSubmitted(true);
         // onSuccess wird nicht mehr aufgerufen - Ergebnis nur per E-Mail
       } else {
-        console.log("[v0] FEHLER - Web3Forms hat Fehler zurückgegeben:", data);
         setError("Beim Senden ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.");
       }
-    } catch (err) {
-      console.log("[v0] CATCH FEHLER:", err);
+    } catch {
       setError("Beim Senden ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.");
     } finally {
       setIsSubmitting(false);

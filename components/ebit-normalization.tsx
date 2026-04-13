@@ -113,6 +113,7 @@ export interface NormalizationResult {
   legalForm: string;
   legalFormLabel: string;
   averageMarketSalary: number;
+  averageCurrentSalary: number;
 }
 
 // Vordefinierte Kategorien für Hinzurechnungen
@@ -332,6 +333,15 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
     return salaryValues.reduce((sum, v) => sum + v, 0) / salaryValues.length;
   }, [years]);
 
+  // Durchschnittliches tatsächliches GF-Gehalt (nur für Kapitalgesellschaften relevant)
+  const averageCurrentSalary = useMemo(() => {
+    const salaryValues = years
+      .map((y) => parseGermanNumber(y.currentSalary))
+      .filter((v) => v > 0);
+    if (salaryValues.length === 0) return 0;
+    return salaryValues.reduce((sum, v) => sum + v, 0) / salaryValues.length;
+  }, [years]);
+
   const handleComplete = () => {
     onNormalizationComplete({
       years: yearResults,
@@ -340,6 +350,7 @@ export function EbitNormalization({ onNormalizationComplete }: EbitNormalization
       legalForm,
       legalFormLabel: getLegalFormLabel(legalForm),
       averageMarketSalary,
+      averageCurrentSalary,
     });
   };
 
