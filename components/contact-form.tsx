@@ -350,10 +350,6 @@ Die ermittelten Werte basieren auf den von Ihnen eingegebenen Daten und
 statistischen Durchschnittswerten. Der tatsächliche Marktwert Ihres Unternehmens 
 kann aufgrund individueller Faktoren erheblich abweichen.
 
-Für rechtsverbindliche Entscheidungen, steuerliche Fragen oder Finanzierungsvorhaben 
-ziehen Sie bitte die entsprechenden Fachberater (Rechtsanwalt, Steuerberater, 
-Wirtschaftspr��fer) hinzu.
-
 ================================================================================
     `.trim();
   };
