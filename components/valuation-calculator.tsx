@@ -90,8 +90,8 @@ export function ValuationCalculator() {
     };
   }, []);
 
-  const craftSectors = sectorBenchmarks.filter((s) => s.category === "craft");
-  const manufacturingSectors = sectorBenchmarks.filter((s) => s.category === "manufacturing");
+  const industrySectors = sectorBenchmarks.filter((s) => s.category === "industry");
+  const serviceSectors = sectorBenchmarks.filter((s) => s.category === "services");
 
   const selectedSectorData = useMemo(
     () => sectorBenchmarks.find((s) => s.id === selectedSector),
@@ -221,19 +221,19 @@ export function ValuationCalculator() {
                     </SelectTrigger>
                       <SelectContent>
                         <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                          <Building2 className="inline h-4 w-4 mr-1" />
-                          Handwerksbetriebe
+                          <Factory className="inline h-4 w-4 mr-1" />
+                          Industrie & Produktion
                         </div>
-                        {craftSectors.map((sector) => (
+                        {industrySectors.map((sector) => (
                           <SelectItem key={sector.id} value={sector.id}>
                             {sector.name}
                           </SelectItem>
                         ))}
                         <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground mt-2">
-                          <Factory className="inline h-4 w-4 mr-1" />
-                          Produzierende Industrie
+                          <Building2 className="inline h-4 w-4 mr-1" />
+                          Technologie & Dienstleistungen
                         </div>
-                        {manufacturingSectors.map((sector) => (
+                        {serviceSectors.map((sector) => (
                           <SelectItem key={sector.id} value={sector.id}>
                             {sector.name}
                           </SelectItem>
@@ -250,7 +250,7 @@ export function ValuationCalculator() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Branchen-Benchmark</span>
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                          {selectedSectorData.category === "craft" ? "Handwerk" : "Industrie"}
+                          {selectedSectorData.category === "industry" ? "Industrie" : "Dienstleistungen"}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -766,19 +766,19 @@ export function ValuationCalculator() {
                     <h3 className="text-lg font-semibold mb-3">3. Typische Multiple-Bandbreiten</h3>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="rounded-lg border p-4">
-                        <h4 className="font-medium mb-2">Handwerksbetriebe</h4>
+                        <h4 className="font-medium mb-2">Industrie & Produktion</h4>
                         <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>Elektro / SHK: 3,5x - 6,0x EBIT</li>
-                          <li>Tischlerei / Metallbau: 2,5x - 5,0x EBIT</li>
-                          <li>Maler / Dachdecker: 2,0x - 4,5x EBIT</li>
+                          <li>Maschinen- und Anlagenbau: 4,5x - 7,0x EBIT</li>
+                          <li>Metallverarbeitung & Fertigungstechnik: 4,0x - 6,5x EBIT</li>
+                          <li>Medizintechnik & Life Sciences: 6,0x - 9,5x EBIT</li>
                         </ul>
                       </div>
                       <div className="rounded-lg border p-4">
-                        <h4 className="font-medium mb-2">Produzierende Industrie</h4>
+                        <h4 className="font-medium mb-2">Technologie & Dienstleistungen</h4>
                         <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>Präzisionsfertigung / CNC: 4,0x - 7,0x EBIT</li>
-                          <li>Werkzeug- und Formenbau: 4,5x - 7,5x EBIT</li>
-                          <li>Sondermaschinenbau: 5,0x - 8,5x EBIT</li>
+                          <li>Software & Digitale Plattformen: 6,5x - 10,5x EBIT</li>
+                          <li>IT-Services & Systemhäuser: 5,0x - 8,0x EBIT</li>
+                          <li>Unternehmensnahe Dienstleistungen: 4,5x - 7,0x EBIT</li>
                         </ul>
                       </div>
                     </div>

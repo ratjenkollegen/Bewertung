@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 
 export function BenchmarkTable() {
-  const [filter, setFilter] = useState<"all" | "craft" | "manufacturing">("all");
+  const [filter, setFilter] = useState<"all" | "industry" | "services">("all");
   const [search, setSearch] = useState("");
 
   const filteredSectors = sectorBenchmarks.filter((sector) => {
@@ -33,8 +33,8 @@ export function BenchmarkTable() {
     return matchesFilter && matchesSearch;
   });
 
-  const craftCount = sectorBenchmarks.filter((s) => s.category === "craft").length;
-  const mfgCount = sectorBenchmarks.filter((s) => s.category === "manufacturing").length;
+  const industryCount = sectorBenchmarks.filter((s) => s.category === "industry").length;
+  const servicesCount = sectorBenchmarks.filter((s) => s.category === "services").length;
 
   return (
     <Card>
@@ -44,7 +44,7 @@ export function BenchmarkTable() {
           Branchen-EBIT-Multiple Benchmarks
         </CardTitle>
         <CardDescription>
-          Branchenspezifische Bewertungsmultiples für Handwerk und Industrie
+          Branchenspezifische Bewertungsmultiples für kleine und mittlere Unternehmen (KMU)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -63,13 +63,13 @@ export function BenchmarkTable() {
               <TabsTrigger value="all">
                 Alle ({sectorBenchmarks.length})
               </TabsTrigger>
-              <TabsTrigger value="craft" className="gap-1">
-                <Building2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Handwerk</span> ({craftCount})
-              </TabsTrigger>
-              <TabsTrigger value="manufacturing" className="gap-1">
+              <TabsTrigger value="industry" className="gap-1">
                 <Factory className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Industrie</span> ({mfgCount})
+                <span className="hidden sm:inline">Industrie</span> ({industryCount})
+              </TabsTrigger>
+              <TabsTrigger value="services" className="gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Dienstleistungen</span> ({servicesCount})
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -164,17 +164,17 @@ function SectorRow({ sector }: { sector: SectorBenchmark }) {
         <Badge
           variant="secondary"
           className={
-            sector.category === "craft"
-              ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-              : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+            sector.category === "industry"
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
           }
         >
-          {sector.category === "craft" ? (
-            <Building2 className="h-3 w-3 mr-1" />
-          ) : (
+          {sector.category === "industry" ? (
             <Factory className="h-3 w-3 mr-1" />
+          ) : (
+            <Building2 className="h-3 w-3 mr-1" />
           )}
-          {sector.category === "craft" ? "Handwerk" : "Industrie"}
+          {sector.category === "industry" ? "Industrie" : "Dienstleistungen"}
         </Badge>
       </td>
       <td className="py-3 px-2 text-center">
