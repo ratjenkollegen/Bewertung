@@ -11,7 +11,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { sectorBenchmarks, type SectorBenchmark } from "@/lib/valuation-data";
+import {
+  sectorBenchmarks,
+  sizeClasses,
+  formatNumber,
+  type SectorBenchmark,
+} from "@/lib/valuation-data";
 import { Search, Building2, Factory, TrendingUp, Info } from "lucide-react";
 import {
   Tooltip,
@@ -21,7 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 
 export function BenchmarkTable() {
-  const [filter, setFilter] = useState<"all" | "craft" | "manufacturing">("all");
+  const [filter, setFilter] = useState<"all" | "industry" | "services">("all");
   const [search, setSearch] = useState("");
 
   const filteredSectors = sectorBenchmarks.filter((sector) => {
@@ -33,18 +38,18 @@ export function BenchmarkTable() {
     return matchesFilter && matchesSearch;
   });
 
-  const craftCount = sectorBenchmarks.filter((s) => s.category === "craft").length;
-  const mfgCount = sectorBenchmarks.filter((s) => s.category === "manufacturing").length;
+  const industryCount = sectorBenchmarks.filter((s) => s.category === "industry").length;
+  const servicesCount = sectorBenchmarks.filter((s) => s.category === "services").length;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-accent" />
-          Branchen-EBIT-Multiple Benchmarks
+          Branchen-EBITDA-Multiple Benchmarks
         </CardTitle>
         <CardDescription>
-          Branchenspezifische Bewertungsmultiples für Handwerk und Industrie
+          Branchenspezifische Bewertungsmultiples für kleine und mittlere Unternehmen (KMU)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -63,13 +68,13 @@ export function BenchmarkTable() {
               <TabsTrigger value="all">
                 Alle ({sectorBenchmarks.length})
               </TabsTrigger>
-              <TabsTrigger value="craft" className="gap-1">
-                <Building2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Handwerk</span> ({craftCount})
-              </TabsTrigger>
-              <TabsTrigger value="manufacturing" className="gap-1">
+              <TabsTrigger value="industry" className="gap-1">
                 <Factory className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Industrie</span> ({mfgCount})
+                <span className="hidden sm:inline">Industrie</span> ({industryCount})
+              </TabsTrigger>
+              <TabsTrigger value="services" className="gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Dienstleistungen</span> ({servicesCount})
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -81,46 +86,22 @@ export function BenchmarkTable() {
               <tr className="border-b text-sm">
                 <th className="text-left py-3 px-2 font-medium">Branche</th>
                 <th className="text-center py-3 px-2 font-medium">Typ</th>
-                <th className="text-center py-3 px-2 font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                        Niedrig
-                        <Info className="h-3 w-3 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>25. Perzentil der Transaktionen</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </th>
-                <th className="text-center py-3 px-2 font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                        Median
-                        <Info className="h-3 w-3 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>50. Perzentil - typische Transaktion</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </th>
-                <th className="text-center py-3 px-2 font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                        Hoch
-                        <Info className="h-3 w-3 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>75. Perzentil - Premium-Transaktionen</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </th>
-                <th className="text-center py-3 px-2 font-medium">EBIT-Marge</th>
+                {sizeClasses.map((sizeClass) => (
+                  <th key={sizeClass.id} className="text-center py-3 px-2 font-medium">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                          {sizeClass.label}
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>EBITDA-Multiple bei Umsatz {sizeClass.revenueRange}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </th>
+                ))}
+                <th className="text-center py-3 px-2 font-medium">EBITDA-Marge</th>
                 <th className="text-left py-3 px-2 font-medium">Schlüsselfaktoren</th>
               </tr>
             </thead>
@@ -143,7 +124,8 @@ export function BenchmarkTable() {
           <p>
             <strong>Datenquelle:</strong> Zusammengestellt aus Markttransaktionsdaten, Branchenberichten
             und M&A-Beratungserfahrung im deutschsprachigen Raum. Multiples spiegeln Enterprise
-            Value / EBIT für KMU (1 Mio. - 50 Mio. EUR Umsatz) wider.
+            Value / EBITDA für KMU nach Größenklassen wider: Micro-Cap ({"<"} 5 Mio. €), Small-Cap
+            (5–50 Mio. €) und Mid-Cap ({">"} 50 Mio. €) Umsatz.
           </p>
         </div>
       </CardContent>
@@ -164,31 +146,32 @@ function SectorRow({ sector }: { sector: SectorBenchmark }) {
         <Badge
           variant="secondary"
           className={
-            sector.category === "craft"
-              ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-              : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+            sector.category === "industry"
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
           }
         >
-          {sector.category === "craft" ? (
-            <Building2 className="h-3 w-3 mr-1" />
-          ) : (
+          {sector.category === "industry" ? (
             <Factory className="h-3 w-3 mr-1" />
+          ) : (
+            <Building2 className="h-3 w-3 mr-1" />
           )}
-          {sector.category === "craft" ? "Handwerk" : "Industrie"}
+          {sector.category === "industry" ? "Industrie" : "Dienstleistungen"}
         </Badge>
       </td>
-      <td className="py-3 px-2 text-center">
-        <span className="text-muted-foreground">{sector.baseMultiple.low}x</span>
-      </td>
-      <td className="py-3 px-2 text-center">
-        <span className="font-bold text-accent">{sector.baseMultiple.median}x</span>
-      </td>
-      <td className="py-3 px-2 text-center">
-        <span className="text-muted-foreground">{sector.baseMultiple.high}x</span>
-      </td>
+      {sizeClasses.map((sizeClass) => {
+        const range = sector.multiples[sizeClass.id];
+        return (
+          <td key={sizeClass.id} className="py-3 px-2 text-center whitespace-nowrap">
+            <span className="font-semibold text-accent">
+              {formatNumber(range.low)}x – {formatNumber(range.high)}x
+            </span>
+          </td>
+        );
+      })}
       <td className="py-3 px-2 text-center">
         <span className="text-sm">
-          {sector.typicalEBITMargin.low}% - {sector.typicalEBITMargin.high}%
+          {sector.typicalEBITDAMargin.low}% - {sector.typicalEBITDAMargin.high}%
         </span>
       </td>
       <td className="py-3 px-2">

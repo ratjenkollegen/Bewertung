@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   sectorBenchmarks,
+  sizeClasses,
   adjustmentFactors,
   calculateValuation,
   formatCurrency,
@@ -90,8 +91,8 @@ export function ValuationCalculator() {
     };
   }, []);
 
-  const craftSectors = sectorBenchmarks.filter((s) => s.category === "craft");
-  const manufacturingSectors = sectorBenchmarks.filter((s) => s.category === "manufacturing");
+  const industrySectors = sectorBenchmarks.filter((s) => s.category === "industry");
+  const serviceSectors = sectorBenchmarks.filter((s) => s.category === "services");
 
   const selectedSectorData = useMemo(
     () => sectorBenchmarks.find((s) => s.id === selectedSector),
@@ -133,7 +134,7 @@ export function ValuationCalculator() {
 
     const calculationResult = calculateValuation({
       revenue: normalizationResult.averageRevenue,
-      ebit: normalizationResult.averageNormalizedEbit,
+      ebitda: normalizationResult.averageNormalizedEbitda,
       sectorId: selectedSector,
       adjustments,
     });
@@ -171,7 +172,7 @@ export function ValuationCalculator() {
               disabled={!selectedSector}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">EBIT-Bereinigung</span>
+              <span className="hidden sm:inline">EBITDA-Bereinigung</span>
             </TabsTrigger>
             <TabsTrigger 
               value="adjustments" 
@@ -221,19 +222,19 @@ export function ValuationCalculator() {
                     </SelectTrigger>
                       <SelectContent>
                         <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                          <Building2 className="inline h-4 w-4 mr-1" />
-                          Handwerksbetriebe
+                          <Factory className="inline h-4 w-4 mr-1" />
+                          Industrie & Produktion
                         </div>
-                        {craftSectors.map((sector) => (
+                        {industrySectors.map((sector) => (
                           <SelectItem key={sector.id} value={sector.id}>
                             {sector.name}
                           </SelectItem>
                         ))}
                         <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground mt-2">
-                          <Factory className="inline h-4 w-4 mr-1" />
-                          Produzierende Industrie
+                          <Building2 className="inline h-4 w-4 mr-1" />
+                          Technologie & Dienstleistungen
                         </div>
-                        {manufacturingSectors.map((sector) => (
+                        {serviceSectors.map((sector) => (
                           <SelectItem key={sector.id} value={sector.id}>
                             {sector.name}
                           </SelectItem>
@@ -250,31 +251,36 @@ export function ValuationCalculator() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Branchen-Benchmark</span>
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                          {selectedSectorData.category === "craft" ? "Handwerk" : "Industrie"}
+                          {selectedSectorData.category === "industry" ? "Industrie" : "Dienstleistungen"}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {selectedSectorData.description}
                       </p>
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded bg-background p-2">
-                          <div className="text-xs text-muted-foreground">Niedrig</div>
-                          <div className="font-semibold">{selectedSectorData.baseMultiple.low}x</div>
-                        </div>
-                        <div className="rounded bg-accent/10 p-2 ring-1 ring-accent">
-                          <div className="text-xs text-accent">Median</div>
-                          <div className="font-bold text-accent">
-                            {selectedSectorData.baseMultiple.median}x
-                          </div>
-                        </div>
-                        <div className="rounded bg-background p-2">
-                          <div className="text-xs text-muted-foreground">Hoch</div>
-                          <div className="font-semibold">{selectedSectorData.baseMultiple.high}x</div>
-                        </div>
+                        {sizeClasses.map((sizeClass) => {
+                          const multipleRange = selectedSectorData.multiples[sizeClass.id];
+                          return (
+                            <div key={sizeClass.id} className="rounded bg-background p-2">
+                              <div className="text-xs font-medium">{sizeClass.label}</div>
+                              <div className="text-[11px] text-muted-foreground">{sizeClass.revenueRange}</div>
+                              <div className="font-bold text-accent mt-1">
+                                {formatNumber(multipleRange.low)}x – {formatNumber(multipleRange.high)}x
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                Median {multipleRange.median.toFixed(2).replace(".", ",")}x
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                       <div className="pt-2 border-t">
                         <div className="text-xs text-muted-foreground mb-1">
-                          Branchentypische EBIT-Marge: {selectedSectorData.typicalEBITMargin.low}% - {selectedSectorData.typicalEBITMargin.high}%
+                          EBITDA-Multiples nach Größenklasse. Die Größenklasse wird automatisch aus dem
+                          Durchschnittsumsatz ermittelt.
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Branchentypische EBITDA-Marge: {selectedSectorData.typicalEBITDAMargin.low}% - {selectedSectorData.typicalEBITDAMargin.high}%
                         </div>
                         <div className="text-xs text-muted-foreground">
                           <span className="font-medium">Schlüsselfaktoren:</span>{" "}
@@ -289,7 +295,7 @@ export function ValuationCalculator() {
                       className="w-full mt-4"
                       onClick={() => setActiveTab("normalization")}
                     >
-                      Weiter zur EBIT-Bereinigung
+                      Weiter zur EBITDA-Bereinigung
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   )}
@@ -482,7 +488,8 @@ export function ValuationCalculator() {
                         {formatCurrency(result.enterpriseValue.high)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Basierend auf bereinigtem EBIT von {formatCurrency(normalizationResult.averageNormalizedEbit)}
+                        Basierend auf bereinigtem EBITDA von {formatCurrency(normalizationResult.averageNormalizedEbitda)}
+                        {" · "}Größenklasse {result.sizeClass.label} ({result.sizeClass.revenueRange})
                       </div>
                     </div>
                   </CardContent>
@@ -493,10 +500,16 @@ export function ValuationCalculator() {
                   {/* Multiple Details */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">EBIT-Multiple</CardTitle>
+                      <CardTitle className="text-base">EBITDA-Multiple</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Spanne ({result.sizeClass.label})</span>
+                          <span className="font-semibold">
+                            {formatNumber(result.multipleRange.low)}x – {formatNumber(result.multipleRange.high)}x
+                          </span>
+                        </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Basis-Multiple</span>
                           <span className="font-semibold">{result.baseMultiple.toFixed(2)}x</span>
@@ -539,25 +552,25 @@ export function ValuationCalculator() {
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">EBIT-Marge</span>
-                          <span className="font-semibold">{formatNumber(result.ebitMargin)}%</span>
+                          <span className="text-muted-foreground">EBITDA-Marge</span>
+                          <span className="font-semibold">{formatNumber(result.ebitdaMargin)}%</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Branchentypisch</span>
                           <span className="text-muted-foreground">
-                            {selectedSectorData?.typicalEBITMargin.low}% -{" "}
-                            {selectedSectorData?.typicalEBITMargin.high}%
+                            {selectedSectorData?.typicalEBITDAMargin.low}% -{" "}
+                            {selectedSectorData?.typicalEBITDAMargin.high}%
                           </span>
                         </div>
                         <div className="pt-2 border-t">
-                          {result.ebitMargin <
-                          (selectedSectorData?.typicalEBITMargin.low || 0) ? (
+                          {result.ebitdaMargin <
+                          (selectedSectorData?.typicalEBITDAMargin.low || 0) ? (
                             <div className="flex items-center gap-2 text-amber-600 text-xs">
                               <AlertTriangle className="h-4 w-4" />
                               Marge unter Branchenschnitt
                             </div>
-                          ) : result.ebitMargin >
-                            (selectedSectorData?.typicalEBITMargin.high || 100) ? (
+                          ) : result.ebitdaMargin >
+                            (selectedSectorData?.typicalEBITDAMargin.high || 100) ? (
                             <div className="flex items-center gap-2 text-green-600 text-xs">
                               <CheckCircle2 className="h-4 w-4" />
                               Überdurchschnittliche Marge
@@ -629,7 +642,7 @@ export function ValuationCalculator() {
                 {/* EBIT-Bereinigung Details */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">EBIT-Bereinigung (3-Jahres-Übersicht)</CardTitle>
+                    <CardTitle className="text-base">EBITDA-Bereinigung (3-Jahres-Übersicht)</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
@@ -637,11 +650,13 @@ export function ValuationCalculator() {
                         <thead>
                           <tr className="border-b">
                             <th className="text-left py-2 font-medium">Jahr</th>
-                            <th className="text-right py-2 font-medium">Ausgewiesen</th>
+                            <th className="text-right py-2 font-medium">EBIT</th>
                             <th className="text-right py-2 font-medium text-green-600">+ Hinzu</th>
                             <th className="text-right py-2 font-medium text-red-600">- Kürzungen</th>
                             <th className="text-right py-2 font-medium text-amber-600">± Gehalt</th>
-                            <th className="text-right py-2 font-medium text-accent">= Bereinigt</th>
+                            <th className="text-right py-2 font-medium">= Ber. EBIT</th>
+                            <th className="text-right py-2 font-medium">+ AfA</th>
+                            <th className="text-right py-2 font-medium text-accent">= Ber. EBITDA</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -660,16 +675,28 @@ export function ValuationCalculator() {
                                   ? `${year.salaryAdjustment > 0 ? "+" : ""}${formatCurrency(year.salaryAdjustment)}`
                                   : "—"}
                               </td>
-                              <td className="text-right py-2 font-mono font-medium text-accent">
+                              <td className="text-right py-2 font-mono">
                                 {formatCurrency(year.normalizedEbit)}
+                              </td>
+                              <td className="text-right py-2 font-mono">
+                                {year.depreciation > 0 ? `+${formatCurrency(year.depreciation)}` : "—"}
+                              </td>
+                              <td className="text-right py-2 font-mono font-medium text-accent">
+                                {formatCurrency(year.normalizedEbitda)}
                               </td>
                             </tr>
                           ))}
                           <tr className="bg-accent/10 font-medium">
                             <td className="py-2">Durchschnitt</td>
                             <td className="text-right py-2" colSpan={4}></td>
-                            <td className="text-right py-2 font-mono text-accent">
+                            <td className="text-right py-2 font-mono">
                               {formatCurrency(normalizationResult.averageNormalizedEbit)}
+                            </td>
+                            <td className="text-right py-2 font-mono">
+                              {formatCurrency(normalizationResult.averageDepreciation)}
+                            </td>
+                            <td className="text-right py-2 font-mono text-accent">
+                              {formatCurrency(normalizationResult.averageNormalizedEbitda)}
                             </td>
                           </tr>
                         </tbody>
@@ -704,7 +731,7 @@ export function ValuationCalculator() {
           <TabsContent value="methodology" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Methodik der EBIT-Multiple-Bewertung</CardTitle>
+                <CardTitle>Methodik der EBITDA-Multiple-Bewertung</CardTitle>
                 <CardDescription>
                   Verstehen Sie die Grundlagen unseres Bewertungsansatzes
                 </CardDescription>
@@ -712,11 +739,12 @@ export function ValuationCalculator() {
               <CardContent className="prose prose-sm max-w-none">
                 <div className="space-y-8">
                   <section>
-                    <h3 className="text-lg font-semibold mb-3">1. EBIT-Bereinigung (Normalisierung)</h3>
+                    <h3 className="text-lg font-semibold mb-3">1. EBIT-/EBITDA-Bereinigung (Normalisierung)</h3>
                     <p className="text-muted-foreground mb-4">
                       Das ausgewiesene EBIT aus dem Jahresabschluss muss bereinigt werden, um die
                       nachhaltige Ertragskraft des Unternehmens darzustellen. Wir betrachten die letzten
-                      drei Geschäftsjahre und nehmen folgende Anpassungen vor:
+                      drei Geschäftsjahre und nehmen folgende Anpassungen vor. Anschließend werden die
+                      Abschreibungen addiert: Bereinigtes EBITDA = bereinigtes EBIT + Abschreibungen.
                     </p>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="rounded-lg border p-4 bg-green-50/50">
@@ -744,16 +772,20 @@ export function ValuationCalculator() {
                   <section>
                     <h3 className="text-lg font-semibold mb-3">2. Multiple-Bestimmung</h3>
                     <p className="text-muted-foreground mb-4">
-                      Der EBIT-Multiple wird basierend auf Branchenbenchmarks und unternehmensspezifischen
-                      Anpassungsfaktoren ermittelt:
+                      Der EBITDA-Multiple wird basierend auf Branchenbenchmarks je Größenklasse und
+                      unternehmensspezifischen Anpassungsfaktoren ermittelt:
                     </p>
                     <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm">
-                      Unternehmenswert = Bereinigtes EBIT (Ø 3 Jahre) × Angepasstes Multiple
+                      Unternehmenswert = Bereinigtes EBITDA (Ø 3 Jahre) × Angepasstes Multiple
                     </div>
                     <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                       <li>
-                        <strong>Basis-Multiple:</strong> Branchenspezifischer Median-Multiple basierend
-                        auf vergleichbaren Transaktionen
+                        <strong>Größenklasse:</strong> Micro-Cap ({"<"} 5 Mio. €), Small-Cap (5–50 Mio. €)
+                        oder Mid-Cap ({">"} 50 Mio. €) – automatisch aus dem Durchschnittsumsatz
+                      </li>
+                      <li>
+                        <strong>Basis-Multiple:</strong> Median der Branchen-Spanne der jeweiligen
+                        Größenklasse; das angepasste Multiple bleibt innerhalb dieser Spanne
                       </li>
                       <li>
                         <strong>Anpassungen:</strong> Individuelle Faktoren wie Wachstum, Risikoprofil,
@@ -763,24 +795,25 @@ export function ValuationCalculator() {
                   </section>
 
                   <section>
-                    <h3 className="text-lg font-semibold mb-3">3. Typische Multiple-Bandbreiten</h3>
+                    <h3 className="text-lg font-semibold mb-3">3. Typische EBITDA-Multiple-Bandbreiten (Small-Cap)</h3>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border p-4">
-                        <h4 className="font-medium mb-2">Handwerksbetriebe</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>Elektro / SHK: 3,5x - 6,0x EBIT</li>
-                          <li>Tischlerei / Metallbau: 2,5x - 5,0x EBIT</li>
-                          <li>Maler / Dachdecker: 2,0x - 4,5x EBIT</li>
-                        </ul>
-                      </div>
-                      <div className="rounded-lg border p-4">
-                        <h4 className="font-medium mb-2">Produzierende Industrie</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>Präzisionsfertigung / CNC: 4,0x - 7,0x EBIT</li>
-                          <li>Werkzeug- und Formenbau: 4,5x - 7,5x EBIT</li>
-                          <li>Sondermaschinenbau: 5,0x - 8,5x EBIT</li>
-                        </ul>
-                      </div>
+                      {(["industry", "services"] as const).map((category) => (
+                        <div key={category} className="rounded-lg border p-4">
+                          <h4 className="font-medium mb-2">
+                            {category === "industry" ? "Industrie & Produktion" : "Technologie & Dienstleistungen"}
+                          </h4>
+                          <ul className="text-sm text-muted-foreground space-y-1">
+                            {sectorBenchmarks
+                              .filter((s) => s.category === category)
+                              .slice(0, 3)
+                              .map((s) => (
+                                <li key={s.id}>
+                                  {s.name}: {formatNumber(s.multiples.small.low)}x - {formatNumber(s.multiples.small.high)}x EBITDA
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
                   </section>
 

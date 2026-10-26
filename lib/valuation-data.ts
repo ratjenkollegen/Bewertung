@@ -1,18 +1,34 @@
-// EBIT-Multiple Benchmarks für Handwerk und produzierende Industrie
-// Basierend auf Markttransaktionsdaten und Branchenanalysen
+// EBITDA-Multiple Benchmarks für KMU nach Branchen und Größenklasse (Umsatz)
+// Die Spannen (von/bis) stammen aus Markttransaktionsdaten; als Basis-Multiple dient der Median der Spanne.
+
+export type SizeClassId = "micro" | "small" | "mid";
+
+export interface SizeClass {
+  id: SizeClassId;
+  label: string;
+  revenueRange: string;
+}
+
+export const sizeClasses: SizeClass[] = [
+  { id: "micro", label: "Micro-Cap", revenueRange: "< 5 Mio. € Umsatz" },
+  { id: "small", label: "Small-Cap", revenueRange: "5–50 Mio. € Umsatz" },
+  { id: "mid", label: "Mid-Cap", revenueRange: "> 50 Mio. € Umsatz" },
+];
+
+export interface MultipleRange {
+  low: number;
+  median: number;
+  high: number;
+}
 
 export interface SectorBenchmark {
   id: string;
   name: string;
-  category: "craft" | "manufacturing";
-  baseMultiple: {
-    low: number;
-    median: number;
-    high: number;
-  };
+  category: "industry" | "services";
+  multiples: Record<SizeClassId, MultipleRange>;
   description: string;
   keyFactors: string[];
-  typicalEBITMargin: {
+  typicalEBITDAMargin: {
     low: number;
     median: number;
     high: number;
@@ -31,170 +47,210 @@ export interface AdjustmentFactor {
   }[];
 }
 
+const range = (low: number, high: number): MultipleRange => ({
+  low,
+  high,
+  median: Math.round(((low + high) / 2) * 100) / 100,
+});
+
+const tiers = (
+  micro: [number, number],
+  small: [number, number],
+  mid: [number, number]
+): Record<SizeClassId, MultipleRange> => ({
+  micro: range(...micro),
+  small: range(...small),
+  mid: range(...mid),
+});
+
+export function getSizeClass(revenue: number): SizeClass {
+  if (revenue < 5_000_000) return sizeClasses[0];
+  if (revenue <= 50_000_000) return sizeClasses[1];
+  return sizeClasses[2];
+}
+
 export const sectorBenchmarks: SectorBenchmark[] = [
-  // Handwerksbetriebe
+  // Industrie, Produktion & Bau
   {
-    id: "electrical",
-    name: "Elektroinstallation",
-    category: "craft",
-    baseMultiple: { low: 3.5, median: 4.5, high: 6.0 },
-    description: "Elektroinstallateure, Industrieelektriker, Smart-Home-Installationen",
-    keyFactors: ["Wiederkehrende Wartungsverträge", "Spezialisierungsgrad", "Kundendiversifikation"],
-    typicalEBITMargin: { low: 5, median: 8, high: 12 },
-  },
-  {
-    id: "hvac",
-    name: "Sanitär, Heizung, Klima (SHK)",
-    category: "craft",
-    baseMultiple: { low: 3.5, median: 5.0, high: 7.0 },
-    description: "Heizungsinstallation, Klimaanlagen, Sanitärdienstleistungen",
-    keyFactors: ["Wartungsvertragsbasis", "Wärmepumpen-Expertise", "Energieeffizienz-Fokus"],
-    typicalEBITMargin: { low: 6, median: 9, high: 14 },
-  },
-  {
-    id: "carpentry",
-    name: "Tischlerei / Schreinerei",
-    category: "craft",
-    baseMultiple: { low: 2.5, median: 3.5, high: 5.0 },
-    description: "Möbelbau nach Maß, Innenausbau, Fensterfertigung",
-    keyFactors: ["CNC-Automatisierungsgrad", "Designfähigkeiten", "Premium-Positionierung"],
-    typicalEBITMargin: { low: 4, median: 7, high: 11 },
-  },
-  {
-    id: "metalwork",
-    name: "Metallbau / Schlosserei",
-    category: "craft",
-    baseMultiple: { low: 3.0, median: 4.0, high: 5.5 },
-    description: "Stahlkonstruktionen, Metallverarbeitung, Schweißarbeiten",
-    keyFactors: ["Zertifizierungen (EN 1090)", "Projektkomplexität", "Industrie vs. Bau"],
-    typicalEBITMargin: { low: 5, median: 8, high: 12 },
-  },
-  {
-    id: "roofing",
-    name: "Dachdeckerei",
-    category: "craft",
-    baseMultiple: { low: 2.5, median: 3.5, high: 5.0 },
-    description: "Dachinstallation, Reparatur und Solaranlagen-Integration",
-    keyFactors: ["Solarinstallations-Fähigkeit", "Versicherungsaufträge", "Regionale Reputation"],
-    typicalEBITMargin: { low: 4, median: 7, high: 10 },
-  },
-  {
-    id: "painting",
-    name: "Maler- und Lackierbetrieb",
-    category: "craft",
-    baseMultiple: { low: 2.0, median: 3.0, high: 4.5 },
-    description: "Innen- und Außenmalerei, Industriebeschichtungen",
-    keyFactors: ["Gewerbe- vs. Privatkunden-Mix", "Spezialbeschichtungen", "Mitarbeiterbindung"],
-    typicalEBITMargin: { low: 3, median: 6, high: 9 },
-  },
-  {
-    id: "masonry",
-    name: "Maurerei / Hochbau",
-    category: "craft",
-    baseMultiple: { low: 2.5, median: 3.5, high: 5.0 },
-    description: "Mauerarbeiten, Betonarbeiten, allgemeiner Hochbau",
-    keyFactors: ["Maschinenpark-Eigentum", "Projektgröße", "Subunternehmer-Netzwerk"],
-    typicalEBITMargin: { low: 4, median: 7, high: 11 },
+    id: "machinery",
+    name: "Maschinen- und Anlagenbau",
+    category: "industry",
+    multiples: tiers([3.6, 5.1], [4.6, 6.0], [5.6, 7.3]),
+    description: "Allgemeiner Maschinenbau, Sondermaschinen, Anlagen- und Automatisierungstechnik",
+    keyFactors: ["Servicegeschäft / Ersatzteile", "Engineering-Tiefe", "IP / Patente"],
+    typicalEBITDAMargin: { low: 9, median: 13, high: 18 },
   },
   {
     id: "automotive",
-    name: "Kfz-Werkstatt / Kfz-Handel",
-    category: "craft",
-    baseMultiple: { low: 2.5, median: 3.5, high: 5.0 },
-    description: "Autoreparatur, Wartung, Diagnose, Fahrzeughandel (Neu- und Gebrauchtwagen)",
-    keyFactors: ["Markenbindung", "E-Fahrzeug-Service", "Kundenstamm-Loyalität", "Handelsmargen"],
-    typicalEBITMargin: { low: 4, median: 7, high: 10 },
-  },
-  // Produzierende Industrie / Maschinenbau
-  {
-    id: "precision",
-    name: "Präzisionsfertigung / Feinmechanik",
-    category: "manufacturing",
-    baseMultiple: { low: 4.0, median: 5.5, high: 7.5 },
-    description: "Hochpräzisionsteile, Medizintechnik-Komponenten, Luftfahrtteile",
-    keyFactors: ["Zertifizierungen (ISO 13485, AS9100)", "Kundenkonzentration", "Technologieniveau"],
-    typicalEBITMargin: { low: 8, median: 12, high: 18 },
+    name: "Fahrzeugbau & Automotive",
+    category: "industry",
+    multiples: tiers([2.7, 4.5], [3.9, 5.1], [4.7, 6.1]),
+    description: "Fahrzeug- und Karosseriebau, Automobilzulieferer, Komponentenfertigung",
+    keyFactors: ["Abhängigkeit von OEMs", "E-Mobilitäts-Fähigkeit", "Preisdruck / Vertragsbedingungen"],
+    typicalEBITDAMargin: { low: 6, median: 9, high: 13 },
   },
   {
-    id: "cnc",
-    name: "CNC-Zerspanung",
-    category: "manufacturing",
-    baseMultiple: { low: 3.5, median: 5.0, high: 7.0 },
-    description: "CNC-Drehen, Fräsen, komplexe Teileproduktion",
-    keyFactors: ["5-Achs-Fähigkeiten", "Automatisierungsgrad", "Branchenfokus"],
-    typicalEBITMargin: { low: 7, median: 11, high: 16 },
+    id: "electrical",
+    name: "Elektrotechnik & Elektronik",
+    category: "industry",
+    multiples: tiers([4.2, 6.0], [5.7, 7.6], [6.8, 8.5]),
+    description: "Elektrotechnische Komponenten, Elektronikfertigung (EMS), Steuerungs- und Messtechnik",
+    keyFactors: ["Entwicklungskompetenz", "Branchenfokus (Industrie, Medizin)", "Lieferkettenstabilität"],
+    typicalEBITDAMargin: { low: 9, median: 13, high: 18 },
   },
   {
-    id: "toolmaking",
-    name: "Werkzeugbau / Formenbau",
-    category: "manufacturing",
-    baseMultiple: { low: 4.0, median: 5.5, high: 8.0 },
-    description: "Spritzgusswerkzeuge, Stanzwerkzeuge, Sonderwerkzeuge",
-    keyFactors: ["IP-Eigentum", "Kundenbeziehungen", "Engineering-Fähigkeiten"],
-    typicalEBITMargin: { low: 8, median: 13, high: 20 },
+    id: "metalworking",
+    name: "Metallverarbeitung & Fertigungstechnik",
+    category: "industry",
+    multiples: tiers([3.4, 4.2], [4.1, 5.5], [5.0, 7.2]),
+    description: "CNC-Zerspanung, Blechbearbeitung, Werkzeug- und Formenbau, Lohnfertigung",
+    keyFactors: ["Maschinenpark-Modernität", "Automatisierungsgrad", "Kundenkonzentration"],
+    typicalEBITDAMargin: { low: 9, median: 13, high: 18 },
   },
   {
-    id: "sheetmetal",
-    name: "Blechbearbeitung",
-    category: "manufacturing",
-    baseMultiple: { low: 3.0, median: 4.5, high: 6.5 },
-    description: "Laserschneiden, Biegen, Blechfertigung",
-    keyFactors: ["Maschinenpark-Modernität", "Automatisierung", "Mehrwertdienste"],
-    typicalEBITMargin: { low: 6, median: 10, high: 15 },
+    id: "chemicals",
+    name: "Chemie, Kunststoffe & Verpackung",
+    category: "industry",
+    multiples: tiers([3.6, 4.6], [5.4, 6.5], [6.5, 8.1]),
+    description: "Spezialchemie, Kunststoffverarbeitung (Spritzguss, Extrusion), Verpackungsherstellung",
+    keyFactors: ["Rohstoffpreis-Abhängigkeit", "Technische Spezialisierung", "Nachhaltigkeit / Recycling"],
+    typicalEBITDAMargin: { low: 9, median: 14, high: 19 },
   },
   {
-    id: "machinery",
-    name: "Sondermaschinenbau",
-    category: "manufacturing",
-    baseMultiple: { low: 4.5, median: 6.0, high: 9.0 },
-    description: "Sondermaschinen, Automatisierungssysteme, Produktionsanlagen",
-    keyFactors: ["Engineering-Tiefe", "Serviceumsatz", "IP/Patente"],
-    typicalEBITMargin: { low: 8, median: 12, high: 18 },
+    id: "medtech",
+    name: "Medizintechnik & Life Sciences",
+    category: "industry",
+    multiples: tiers([5.9, 7.6], [7.1, 9.0], [8.2, 10.0]),
+    description: "Medizinprodukte, Diagnostik, Labortechnik, Pharma-Zulieferer",
+    keyFactors: ["Zulassungen (MDR, ISO 13485)", "Produktportfolio / IP", "Regulatorische Eintrittsbarrieren"],
+    typicalEBITDAMargin: { low: 13, median: 19, high: 26 },
   },
   {
-    id: "general_machinery",
-    name: "Maschinenbau",
-    category: "manufacturing",
-    baseMultiple: { low: 4.0, median: 5.5, high: 8.0 },
-    description: "Allgemeiner Maschinenbau, Serienmaschinen, Standardmaschinen",
-    keyFactors: ["Produktportfolio", "Servicegeschäft", "Marktposition"],
-    typicalEBITMargin: { low: 7, median: 11, high: 16 },
+    id: "construction",
+    name: "Bauhaupt- & Baunebengewerbe (Handwerk)",
+    category: "industry",
+    multiples: tiers([3.7, 5.0], [4.4, 5.8], [5.0, 6.8]),
+    description: "Hoch- und Tiefbau, Ausbaugewerke, SHK, Elektroinstallation, Handwerksbetriebe",
+    keyFactors: ["Auftragsbestand", "Fachkräfteverfügbarkeit", "Meisterqualifikation / Nachfolge"],
+    typicalEBITDAMargin: { low: 6, median: 10, high: 14 },
   },
   {
-    id: "manufacturing_tech",
-    name: "Fertigungstechnik",
-    category: "manufacturing",
-    baseMultiple: { low: 3.5, median: 5.0, high: 7.5 },
-    description: "Fertigungsverfahren, Produktionstechnik, Fertigungsanlagen",
-    keyFactors: ["Technologie-Know-how", "Automatisierungsgrad", "Kundenstamm"],
-    typicalEBITMargin: { low: 6, median: 10, high: 15 },
+    id: "food",
+    name: "Nahrungs- & Genussmittel",
+    category: "industry",
+    multiples: tiers([4.4, 5.7], [5.5, 6.6], [6.8, 8.0]),
+    description: "Lebensmittelherstellung, Getränke, Bäckereien, Feinkost und Genussmittel",
+    keyFactors: ["Markenstärke", "Listungen im Handel", "Rohstoffkosten"],
+    typicalEBITDAMargin: { low: 6, median: 10, high: 15 },
   },
   {
-    id: "assembly",
-    name: "Montage / Lohnfertigung",
-    category: "manufacturing",
-    baseMultiple: { low: 2.5, median: 4.0, high: 5.5 },
-    description: "Produktmontage, Baugruppenfertigung, Auftragsfertigung",
-    keyFactors: ["Kundenkonzentration", "Vertragsbedingungen", "Qualitätszertifizierungen"],
-    typicalEBITMargin: { low: 5, median: 8, high: 12 },
+    id: "consumer_goods",
+    name: "Konsumgüter (Non-Food)",
+    category: "industry",
+    multiples: tiers([2.5, 4.0], [3.6, 5.6], [4.8, 6.3]),
+    description: "Haushaltswaren, Möbel, Textilien, Sport- und Freizeitartikel",
+    keyFactors: ["Markenbekanntheit", "Vertriebskanäle", "Abhängigkeit von Trends"],
+    typicalEBITDAMargin: { low: 6, median: 10, high: 15 },
+  },
+  // Dienstleistungen, Technologie & Handel
+  {
+    id: "software",
+    name: "Software & Digitale Plattformen",
+    category: "services",
+    multiples: tiers([5.6, 7.6], [7.2, 9.0], [8.3, 10.6]),
+    description: "Standardsoftware, SaaS, digitale Plattformen und Marktplätze",
+    keyFactors: ["Wiederkehrende Umsätze (ARR)", "Kundenbindung / Churn", "Skalierbarkeit"],
+    typicalEBITDAMargin: { low: 12, median: 20, high: 30 },
   },
   {
-    id: "plastics",
-    name: "Kunststoffverarbeitung",
-    category: "manufacturing",
-    baseMultiple: { low: 3.5, median: 5.0, high: 7.0 },
-    description: "Spritzguss, Extrusion, Thermoformen",
-    keyFactors: ["Eigener Werkzeugbau", "Technische Kunststoffe", "Nachhaltigkeitsinitiativen"],
-    typicalEBITMargin: { low: 7, median: 11, high: 16 },
+    id: "it_services",
+    name: "IT-Services & Systemhäuser",
+    category: "services",
+    multiples: tiers([5.2, 6.7], [6.3, 8.5], [7.1, 9.6]),
+    description: "IT-Dienstleister, Systemintegration, Managed Services, IT-Beratung",
+    keyFactors: ["Anteil Managed Services", "Fachkräftebindung", "Herstellerpartnerschaften"],
+    typicalEBITDAMargin: { low: 8, median: 12, high: 17 },
   },
   {
-    id: "electronics",
-    name: "Elektronikfertigung / EMS",
-    category: "manufacturing",
-    baseMultiple: { low: 4.0, median: 5.5, high: 8.0 },
-    description: "Leiterplattenbestückung, elektronische Systeme, EMS-Dienstleistungen",
-    keyFactors: ["Entwicklungsdienstleistungen", "Testfähigkeiten", "Branchenfokus (Automotive, Medizin)"],
-    typicalEBITMargin: { low: 6, median: 10, high: 15 },
+    id: "media",
+    name: "Medien, Marketing & Agenturen",
+    category: "services",
+    multiples: tiers([3.2, 5.0], [4.4, 6.3], [6.0, 7.5]),
+    description: "Werbe- und Digitalagenturen, Verlage, Medienproduktion, Marketingdienstleister",
+    keyFactors: ["Abhängigkeit von Schlüsselpersonen", "Retainer-Anteil", "Kundendiversifikation"],
+    typicalEBITDAMargin: { low: 7, median: 12, high: 17 },
+  },
+  {
+    id: "telecom",
+    name: "Telekommunikation & Infrastruktur",
+    category: "services",
+    multiples: tiers([4.2, 6.1], [5.7, 7.2], [6.3, 7.7]),
+    description: "Netzbetreiber, Glasfaser- und Netzausbau, Rechenzentren, TK-Dienstleister",
+    keyFactors: ["Langfristige Verträge", "Eigene Infrastruktur", "Investitionsbedarf"],
+    typicalEBITDAMargin: { low: 14, median: 20, high: 28 },
+  },
+  {
+    id: "healthcare",
+    name: "Gesundheitswesen: Pflege & Dienstleister",
+    category: "services",
+    multiples: tiers([4.0, 5.9], [6.0, 8.1], [8.6, 10.1]),
+    description: "Ambulante und stationäre Pflege, Therapiepraxen, medizinische Dienstleister",
+    keyFactors: ["Fachkräfteverfügbarkeit", "Auslastung / Belegung", "Regulatorische Rahmenbedingungen"],
+    typicalEBITDAMargin: { low: 8, median: 12, high: 17 },
+  },
+  {
+    id: "business_services",
+    name: "Unternehmensnahe Dienstleistungen (B2B)",
+    category: "services",
+    multiples: tiers([3.8, 5.7], [5.0, 7.2], [6.4, 8.0]),
+    description: "Personaldienstleistungen, Beratung, Outsourcing- und Servicedienstleister",
+    keyFactors: ["Rahmenverträge", "Kundendiversifikation", "Personalintensität"],
+    typicalEBITDAMargin: { low: 7, median: 11, high: 16 },
+  },
+  {
+    id: "real_estate_services",
+    name: "Immobilien-Dienstl. & Facility Mgmt.",
+    category: "services",
+    multiples: tiers([4.1, 5.0], [5.0, 6.9], [6.5, 8.1]),
+    description: "Hausverwaltung, Immobilienmakler, Gebäudereinigung, technisches Facility Management",
+    keyFactors: ["Verwaltungsbestand / Verträge", "Kundenbindung", "Personalintensität"],
+    typicalEBITDAMargin: { low: 7, median: 12, high: 18 },
+  },
+  {
+    id: "financial_services",
+    name: "Finanzdienstleistungen & Vers.-Makler",
+    category: "services",
+    multiples: tiers([4.7, 5.9], [6.0, 7.2], [8.4, 10.0]),
+    description: "Versicherungsmakler, Finanzberatung, Vermögensverwaltung, Finanzvermittler",
+    keyFactors: ["Bestandsprovisionen", "Kundenstruktur / Altersstruktur", "Regulatorik / Zulassungen"],
+    typicalEBITDAMargin: { low: 15, median: 22, high: 30 },
+  },
+  {
+    id: "ecommerce",
+    name: "Handel: E-Commerce & Versand",
+    category: "services",
+    multiples: tiers([4.3, 6.9], [5.4, 7.4], [7.3, 9.3]),
+    description: "Onlineshops, Marktplatzhändler, Versandhandel, D2C-Marken",
+    keyFactors: ["Eigene Marke / Sortiment", "Kundenakquisitionskosten", "Plattformabhängigkeit"],
+    typicalEBITDAMargin: { low: 5, median: 9, high: 14 },
+  },
+  {
+    id: "retail_wholesale",
+    name: "Handel: Groß- & Einzelhandel (Stationär)",
+    category: "services",
+    multiples: tiers([3.4, 4.5], [4.4, 5.4], [5.2, 6.7]),
+    description: "Großhandel, Fachhandel, stationärer Einzelhandel",
+    keyFactors: ["Standortqualität", "Lieferantenkonditionen", "Lagerumschlag"],
+    typicalEBITDAMargin: { low: 3, median: 6, high: 10 },
+  },
+  {
+    id: "logistics",
+    name: "Transport, Logistik & Spedition",
+    category: "services",
+    multiples: tiers([3.7, 5.0], [4.5, 5.7], [5.6, 7.2]),
+    description: "Spedition, Kontraktlogistik, Lagerhaltung, Transportunternehmen",
+    keyFactors: ["Fuhrpark / Assets", "Kundenverträge", "Fahrermangel"],
+    typicalEBITDAMargin: { low: 5, median: 8, high: 12 },
   },
 ];
 
@@ -215,8 +271,8 @@ export const adjustmentFactors: AdjustmentFactor[] = [
     ],
   },
   {
-    id: "ebit_stability",
-    name: "EBIT-Marge Stabilität",
+    id: "ebitda_stability",
+    name: "EBITDA-Marge Stabilität",
     category: "Finanzielle Performance",
     weight: 0.12,
     options: [
@@ -314,7 +370,7 @@ export const adjustmentFactors: AdjustmentFactor[] = [
 
 export interface CompanyInput {
   revenue: number;
-  ebit: number;
+  ebitda: number;
   sectorId: string;
   adjustments: Record<string, number>;
 }
@@ -322,13 +378,16 @@ export interface CompanyInput {
 export interface ValuationResult {
   baseMultiple: number;
   adjustedMultiple: number;
+  multipleRange: MultipleRange;
+  sizeClass: SizeClass;
   enterpriseValue: {
     low: number;
     mid: number;
     high: number;
   };
-  ebitMargin: number;
+  ebitdaMargin: number;
   adjustmentDetails: {
+    factorId: string;
     factorName: string;
     impact: number;
   }[];
@@ -342,62 +401,56 @@ export function calculateValuation(input: CompanyInput): ValuationResult {
   const sector = sectorBenchmarks.find((s) => s.id === input.sectorId);
   if (!sector) throw new Error("Ungültiger Sektor");
 
-  const ebitMargin = (input.ebit / input.revenue) * 100;
+  const sizeClass = getSizeClass(input.revenue);
+  const multipleRange = sector.multiples[sizeClass.id];
+  const ebitdaMargin = (input.ebitda / input.revenue) * 100;
 
-  // Start mit Basismultiple
-  let baseMultiple = sector.baseMultiple.median;
+  const baseMultiple = multipleRange.median;
 
-  // Auswirkungen der Anpassungsfaktoren berechnen
-  // KEINE automatische Margenanpassung - die EBIT-Marge fließt bereits ins bereinigte EBIT ein
-  const adjustmentDetails: { factorName: string; impact: number }[] = [];
+  const adjustmentDetails: ValuationResult["adjustmentDetails"] = [];
   let totalAdjustment = 0;
 
   Object.entries(input.adjustments).forEach(([factorId, selectedValue]) => {
     const factor = adjustmentFactors.find((f) => f.id === factorId);
     if (factor) {
-      const impact = selectedValue;
-      totalAdjustment += impact;
-      adjustmentDetails.push({
-        factorName: factor.name,
-        impact: impact,
-      });
+      totalAdjustment += selectedValue;
+      adjustmentDetails.push({ factorId, factorName: factor.name, impact: selectedValue });
     }
   });
 
-  // Angepasstes Multiple berechnen, aber innerhalb der Branchengrenzen halten
-  let adjustedMultiple = baseMultiple * (1 + totalAdjustment);
-  
-  // Multiple darf Branchengrenzen nicht über-/unterschreiten
-  adjustedMultiple = Math.max(sector.baseMultiple.low, adjustedMultiple);
-  adjustedMultiple = Math.min(sector.baseMultiple.high, adjustedMultiple);
+  // Angepasstes Multiple bleibt innerhalb der Spanne der Größenklasse
+  const adjustedMultiple = Math.min(
+    multipleRange.high,
+    Math.max(multipleRange.low, baseMultiple * (1 + totalAdjustment))
+  );
 
-  // Spanne berechnen (±15% vom angepassten Wert, aber auch innerhalb der Grenzen)
   const enterpriseValue = {
-    low: input.ebit * Math.max(sector.baseMultiple.low, adjustedMultiple * 0.85),
-    mid: input.ebit * adjustedMultiple,
-    high: input.ebit * Math.min(sector.baseMultiple.high, adjustedMultiple * 1.15),
+    low: input.ebitda * Math.max(multipleRange.low, adjustedMultiple * 0.85),
+    mid: input.ebitda * adjustedMultiple,
+    high: input.ebitda * Math.min(multipleRange.high, adjustedMultiple * 1.15),
   };
 
-  // Unternehmensposition vs. Sektor bestimmen
   let companyPosition = "Durchschnittlich";
-  if (adjustedMultiple > sector.baseMultiple.median * 1.15) {
-    companyPosition = "Überdurchschnittlich";
-  } else if (adjustedMultiple > sector.baseMultiple.high * 0.9) {
+  if (adjustedMultiple > multipleRange.high * 0.95) {
     companyPosition = "Premium";
-  } else if (adjustedMultiple < sector.baseMultiple.median * 0.85) {
-    companyPosition = "Unterdurchschnittlich";
-  } else if (adjustedMultiple < sector.baseMultiple.low * 1.1) {
+  } else if (adjustedMultiple > baseMultiple * 1.05) {
+    companyPosition = "Überdurchschnittlich";
+  } else if (adjustedMultiple < multipleRange.low * 1.05) {
     companyPosition = "Discount";
+  } else if (adjustedMultiple < baseMultiple * 0.95) {
+    companyPosition = "Unterdurchschnittlich";
   }
 
   return {
     baseMultiple,
     adjustedMultiple,
+    multipleRange,
+    sizeClass,
     enterpriseValue,
-    ebitMargin,
+    ebitdaMargin,
     adjustmentDetails,
     benchmarkComparison: {
-      sectorMedian: sector.baseMultiple.median,
+      sectorMedian: baseMultiple,
       companyPosition,
     },
   };
