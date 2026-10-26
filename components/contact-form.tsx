@@ -237,12 +237,15 @@ ${yearTableRows}
     DURCHSCHNITTSWERTE:
     - Durchschnittlicher Umsatz:          ${formatCurrency(normalizationResult.averageRevenue)}
     - Durchschnittlicher Betriebsgewinn:  ${formatCurrency(normalizationResult.averageNormalizedEbit)}
-    - Betriebsgewinn-Marge:               ${formatNumber(valuationResult.ebitMargin)}%
+    - Durchschnittliche Abschreibungen:   ${formatCurrency(normalizationResult.averageDepreciation)}
+    - Durchschnittliches EBITDA:          ${formatCurrency(normalizationResult.averageNormalizedEbitda)}
+    - EBITDA-Marge:                       ${formatNumber(valuationResult.ebitdaMargin)}%
+    - Größenklasse:                       ${valuationResult.sizeClass.label} (${valuationResult.sizeClass.revenueRange})
     ──────────────────────────────────────────────────────
 
-Die Betriebsgewinn-Marge zeigt, wie viel Prozent vom Umsatz als Betriebsgewinn 
-übrig bleiben. Eine Marge von ${formatNumber(valuationResult.ebitMargin)}% bedeutet: Von jedem Euro Umsatz 
-bleiben ${formatNumber(valuationResult.ebitMargin)} Cent als Betriebsgewinn.
+Das EBITDA ist der bereinigte Betriebsgewinn zuzüglich Abschreibungen. Die 
+EBITDA-Marge von ${formatNumber(valuationResult.ebitdaMargin)}% bedeutet: Von jedem Euro Umsatz 
+bleiben ${formatNumber(valuationResult.ebitdaMargin)} Cent als EBITDA.
 
 
 --------------------------------------------------------------------------------
@@ -252,7 +255,7 @@ bleiben ${formatNumber(valuationResult.ebitMargin)} Cent als Betriebsgewinn.
 Ein Multiple (deutsch: Vervielfältiger) ist eine Kennzahl, mit der der 
 Unternehmenswert berechnet wird:
 
-    Unternehmenswert = Bereinigter Betriebsgewinn × Multiple
+    Unternehmenswert = Bereinigtes EBITDA × EBITDA-Multiple
 
 Woher kommen diese Multiples?
 Die Multiples basieren auf TATSÄCHLICHEN UNTERNEHMENSVERKÄUFEN von kleinen und 
@@ -260,12 +263,13 @@ mittleren Unternehmen (KMU) in Deutschland. Experten werten regelmäßig aus,
 zu welchen Preisen Unternehmen verschiedener Branchen verkauft werden, und 
 errechnen daraus branchenspezifische Durchschnittswerte.
 
-Für Ihre Branche "${selectedSector}" liegt das durchschnittliche Multiple bei:
+Für Ihre Branche "${selectedSector}" in der Größenklasse ${valuationResult.sizeClass.label} gilt:
 
-    Branchen-Multiple: ${formatNumber(valuationResult.baseMultiple)}x
+    EBITDA-Multiple-Spanne: ${formatNumber(valuationResult.multipleRange.low)}x – ${formatNumber(valuationResult.multipleRange.high)}x
+    Branchen-Multiple (Median): ${valuationResult.baseMultiple.toFixed(2).replace(".", ",")}x
 
-Das bedeutet: Unternehmen Ihrer Branche werden im Durchschnitt zum 
-${formatNumber(valuationResult.baseMultiple)}-fachen ihres bereinigten Betriebsgewinns verkauft.
+Das bedeutet: Unternehmen Ihrer Branche und Größe werden im Durchschnitt zum 
+${valuationResult.baseMultiple.toFixed(2).replace(".", ",")}-fachen ihres bereinigten EBITDA verkauft.
 
 
 --------------------------------------------------------------------------------

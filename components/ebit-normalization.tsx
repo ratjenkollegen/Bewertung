@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   Building2,
 } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/valuation-data";
+import { formatCurrency, formatNumber, getSizeClass } from "@/lib/valuation-data";
 
 // Hilfsfunktion zum Parsen von deutschen Zahlenformaten
 function parseGermanNumber(value: string): number {
@@ -83,6 +83,7 @@ export interface YearData {
   year: number;
   revenue: string;
   reportedEbit: string;
+  depreciation: string;
   additions: AdjustmentItem[];
   deductions: AdjustmentItem[];
   currentSalary: string;
@@ -105,10 +106,14 @@ export interface NormalizationResult {
     totalDeductions: number;
     salaryAdjustment: number;
     normalizedEbit: number;
+    depreciation: number;
+    normalizedEbitda: number;
     currentSalary: number;
     marketSalary: number;
   }[];
   averageNormalizedEbit: number;
+  averageDepreciation: number;
+  averageNormalizedEbitda: number;
   averageRevenue: number;
   legalForm: string;
   legalFormLabel: string;
@@ -174,6 +179,7 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
     year,
     revenue: "",
     reportedEbit: "",
+    depreciation: "",
     additions: [],
     deductions: [],
     currentSalary: "",
@@ -308,12 +314,17 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
       salaryAdjustment = currentSalary - marketSalary;
     }
 
+    const depreciation = parseGermanNumber(yearData.depreciation);
+    const normalizedEbit = reportedEbit + totalAdditions - totalDeductions + salaryAdjustment;
+
     return {
       reportedEbit,
       totalAdditions,
       totalDeductions,
       salaryAdjustment,
-      normalizedEbit: reportedEbit + totalAdditions - totalDeductions + salaryAdjustment,
+      normalizedEbit,
+      depreciation,
+      normalizedEbitda: normalizedEbit + depreciation,
     };
   };
 
@@ -333,6 +344,14 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
     if (validYears.length === 0) return 0;
     return validYears.reduce((sum, y) => sum + y.normalizedEbit, 0) / validYears.length;
   }, [yearResults]);
+
+  const averageDepreciation = useMemo(() => {
+    const validYears = yearResults.filter((y) => y.reportedEbit !== 0);
+    if (validYears.length === 0) return 0;
+    return validYears.reduce((sum, y) => sum + y.depreciation, 0) / validYears.length;
+  }, [yearResults]);
+
+  const averageNormalizedEbitda = averageNormalizedEbit + averageDepreciation;
 
   const averageRevenue = useMemo(() => {
     const revenueValues = years
@@ -379,6 +398,8 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
     onNormalizationComplete({
       years: yearResults,
       averageNormalizedEbit,
+      averageDepreciation,
+      averageNormalizedEbitda,
       averageRevenue,
       legalForm,
       legalFormLabel: getLegalFormLabel(legalForm),
@@ -405,7 +426,9 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
       salaryValid = !!y.marketSalary;
     }
     
-    return hasRevenue && hasEbit && ebitNotGreaterThanRevenue && salaryValid;
+    const hasDepreciation = y.depreciation.trim() !== "";
+
+    return hasRevenue && hasEbit && ebitNotGreaterThanRevenue && hasDepreciation && salaryValid;
   });
   
   const hasLegalForm = legalForm !== "";
@@ -419,6 +442,8 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
     if (missingYears.length > 0) return "Bitte für alle 3 Jahre Umsatz und EBIT eingeben";
     const invalidEbit = years.filter((y) => parseGermanNumber(y.reportedEbit) > parseGermanNumber(y.revenue));
     if (invalidEbit.length > 0) return "EBIT darf nicht höher als Umsatz sein";
+    const missingDepreciation = years.filter((y) => y.depreciation.trim() === "");
+    if (missingDepreciation.length > 0) return "Bitte Abschreibungen für alle 3 Jahre eingeben (ggf. 0)";
     
     // Unternehmervergütung prüfen
     if (isCapitalCompany(legalForm)) {
@@ -442,10 +467,11 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Calculator className="h-5 w-5 text-accent" />
-              EBIT-Bereinigung (3-Jahres-Durchschnitt)
+              EBIT-/EBITDA-Bereinigung (3-Jahres-Durchschnitt)
             </CardTitle>
             <CardDescription>
-              Bereinigen Sie das EBIT um nicht-operative und einmalige Positionen
+              Bereinigen Sie das EBIT um nicht-operative und einmalige Positionen. Zusammen mit den
+              Abschreibungen ergibt sich das bereinigte EBITDA als Bewertungsgrundlage.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -479,22 +505,33 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
             </div>
 
             {/* Ergebnis-Übersicht */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-sm text-muted-foreground">Durchschnittsumsatz</div>
                 <div className="text-2xl font-bold">{formatCurrency(averageRevenue)}</div>
+                {averageRevenue > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {getSizeClass(averageRevenue).label} ({getSizeClass(averageRevenue).revenueRange})
+                  </div>
+                )}
               </div>
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-sm text-muted-foreground">Bereinigtes EBIT (Ø)</div>
-                <div className="text-2xl font-bold text-accent">
+                <div className="text-2xl font-bold">
                   {formatCurrency(averageNormalizedEbit)}
                 </div>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <div className="text-sm text-muted-foreground">Bereinigte EBIT-Marge</div>
+                <div className="text-sm text-muted-foreground">Bereinigtes EBITDA (Ø)</div>
+                <div className="text-2xl font-bold text-accent">
+                  {formatCurrency(averageNormalizedEbitda)}
+                </div>
+              </div>
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm text-muted-foreground">Bereinigte EBITDA-Marge</div>
                 <div className="text-2xl font-bold">
                   {averageRevenue > 0
-                    ? formatNumber((averageNormalizedEbit / averageRevenue) * 100) + "%"
+                    ? formatNumber((averageNormalizedEbitda / averageRevenue) * 100) + "%"
                     : "—"}
                 </div>
               </div>
@@ -511,7 +548,7 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
                   <CardTitle className="text-base font-semibold">{yearData.year}</CardTitle>
                   {yearResults[yearIndex].reportedEbit !== 0 && (
                     <Badge variant="secondary" className="font-mono text-xs">
-                      {formatCurrency(yearResults[yearIndex].normalizedEbit)}
+                      EBITDA {formatCurrency(yearResults[yearIndex].normalizedEbitda)}
                     </Badge>
                   )}
                 </div>
@@ -574,6 +611,31 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
                     )}
                     {!yearData.reportedEbit && (
                       <p className="text-xs text-amber-600">Pflichtfeld</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Abschreibungen (AfA) <span className="text-red-500">*</span></Label>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="font-medium mb-1">Planmäßige Abschreibungen auf Sachanlagen und immaterielle Vermögensgegenstände</p>
+                          <p className="text-sm">EBITDA = bereinigtes EBIT + Abschreibungen. Den Wert finden Sie in der GuV.</p>
+                          <p className="text-sm mt-1">AfA auf den Firmenwert hier nicht erfassen, wenn sie bereits als Hinzurechnung eingetragen ist. Keine Abschreibungen: 0 eingeben.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="z.B. 80.000"
+                      value={yearData.depreciation}
+                      className={!yearData.depreciation ? "border-amber-400" : ""}
+                      onChange={(e) => updateYear(yearIndex, { depreciation: formatInputNumber(e.target.value) })}
+                    />
+                    {!yearData.depreciation && (
+                      <p className="text-xs text-amber-600">Pflichtfeld (ggf. 0)</p>
                     )}
                   </div>
                 </div>
@@ -838,9 +900,17 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
                         </span>
                       </div>
                     )}
+                    <div className="flex justify-between border-t pt-1 font-medium">
+                      <span>Bereinigtes EBIT:</span>
+                      <span className="font-mono">{formatCurrency(yearResults[yearIndex].normalizedEbit)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>+ Abschreibungen:</span>
+                      <span className="font-mono">+{formatCurrency(yearResults[yearIndex].depreciation)}</span>
+                    </div>
                     <div className="flex justify-between border-t pt-1 font-semibold">
-                      <span>Bereinigt:</span>
-                      <span className="font-mono text-accent">{formatCurrency(yearResults[yearIndex].normalizedEbit)}</span>
+                      <span>Bereinigtes EBITDA:</span>
+                      <span className="font-mono text-accent">{formatCurrency(yearResults[yearIndex].normalizedEbitda)}</span>
                     </div>
                   </div>
                 )}
@@ -860,7 +930,7 @@ export function EbitNormalization({ onNormalizationComplete, autoFocusLegalForm 
             {isComplete ? (
               <>
                 <CheckCircle2 className="h-4 w-4" />
-                Mit bereinigtem EBIT fortfahren
+                Mit bereinigtem EBITDA fortfahren
               </>
             ) : (
               getIncompleteMessage()
